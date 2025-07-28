@@ -351,29 +351,22 @@ if selected_file:
         # Determine aggregation based on date range
         date_diff = (end - start).days
         if date_diff <= 7:
-            # Create continuous hourly index and reindex with NaN for missing periods
-            full_range = pd.date_range(start=pd.Timestamp(start), end=pd.Timestamp(end) + pd.Timedelta(days=1), freq='H', inclusive='left')
-            # Only sum if we have actual non-NaN values
-            hourly_data = filtered_df.resample('H').agg({
+            # Only aggregate periods with actual data (no reindex to avoid NaN gaps)
+            plot_df = filtered_df.resample('H').agg({
                 data_column: agg_func
             })
-            plot_df = hourly_data.reindex(full_range)
             freq_text = "Hourly"
         elif date_diff <= 90:
-            # Create continuous daily index
-            full_range = pd.date_range(start=start, end=end, freq='D')
-            daily_data = filtered_df.resample('D').agg({
+            # Only aggregate periods with actual data (no reindex to avoid NaN gaps)
+            plot_df = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
-            plot_df = daily_data.reindex(full_range)
             freq_text = "Daily"
         else:
-            # Create continuous monthly index
-            full_range = pd.date_range(start=pd.Timestamp(start).replace(day=1), end=pd.Timestamp(end), freq='MS')
-            monthly_data = filtered_df.resample('MS').agg({
+            # Only aggregate periods with actual data (no reindex to avoid NaN gaps)
+            plot_df = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
-            plot_df = monthly_data.reindex(full_range)
             freq_text = "Monthly"
         
         time_title = f"{start.strftime('%b %d, %Y')} to {end.strftime('%b %d, %Y')} ({freq_text})"
@@ -420,34 +413,27 @@ if selected_file:
             agg = st.sidebar.radio("Aggregation:", ["15-min", "Hourly"])
             freq = "15min" if agg == "15-min" else "H"
             
-            full_range = pd.date_range(start=selected_bin, end=selected_bin + pd.Timedelta(days=1), freq=freq, inclusive='left')
-            hourly_data = filtered_df.resample(freq).agg({
+            # Only aggregate periods with actual data (no reindex to avoid NaN gaps)
+            plot_df = filtered_df.resample(freq).agg({
                 data_column: agg_func
             })
-            plot_df = hourly_data.reindex(full_range)
             
             # Create title
             interval_text = "15 min interval" if agg == "15-min" else "one hour interval"
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Daily: {selected_bin.strftime('%B %d, %Y')} - {interval_text})"
         elif view_mode == "Monthly":
-            # Create continuous daily index for the selected month
-            month_end = selected_bin + pd.offsets.MonthEnd(1)
-            full_range = pd.date_range(start=selected_bin, end=month_end, freq='D')
-            daily_data = filtered_df.resample('D').agg({
+            # Only aggregate periods with actual data (no reindex to avoid NaN gaps)
+            plot_df = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
-            plot_df = daily_data.reindex(full_range)
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Monthly: {selected_bin.strftime('%B %Y')})"
         else:  # Yearly
-            # Create continuous monthly index for the selected year
-            year_end = selected_bin.replace(month=12, day=31)
-            full_range = pd.date_range(start=selected_bin, end=year_end, freq='MS')
-            monthly_data = filtered_df.resample('MS').agg({
+            # Only aggregate periods with actual data (no reindex to avoid NaN gaps)
+            plot_df = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
-            plot_df = monthly_data.reindex(full_range)
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Yearly: {selected_bin.strftime('%Y')})"
 
