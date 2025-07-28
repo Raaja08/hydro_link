@@ -293,6 +293,7 @@ class GoogleDriveManager:
                                 return self._create_virtual_structure(folders)
                     else:
                         # st.warning("📂 **No folders accessible to Service Account**")
+                        pass
                         
                     if files and not folders:
                         st.info(
@@ -301,6 +302,7 @@ class GoogleDriveManager:
                         )
                 else:
                     # st.error("❌ **No items accessible to Service Account - folder sharing may not have propagated yet**")
+                    pass
                     
             except Exception as e:
                 st.error(f"❌ **Debug error:** {e}")
