@@ -213,12 +213,24 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
     
-    # Find OBS folders (processed/obs structure)
+    # Find OBS folders (processed/obs structure or virtual structure)
     obs_folders = {}
     metadata_file_id = None
     atmos_file_id = None
     
-    if 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+    # Handle both normal processed structure and virtual structure
+    if 'obs' in folder_structure:
+        if folder_structure['obs'].get('subfolders'):
+            # Virtual structure - folders are directly accessible
+            st.success("🎯 **Using virtual structure - OBS folders found!**")
+            obs_folders = folder_structure['obs']['subfolders']
+        elif folder_structure['obs']['type'] == 'folder':
+            # Normal structure
+            obs_contents = drive_manager.get_folder_structure(folder_structure['obs']['id'])
+            obs_folders = {name: content for name, content in obs_contents.items() 
+                          if content['type'] == 'folder'}
+    elif 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+        # Legacy processed structure
         processed_contents = drive_manager.get_folder_structure(folder_structure['processed']['id'])
         
         # Find OBS folders

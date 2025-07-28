@@ -213,6 +213,50 @@ class GoogleDriveManager:
             st.error(f"❌ Error finding file '{file_name}': {e}")
             return None
     
+    def _create_virtual_structure(self, folders):
+        """Create a virtual processed folder structure from accessible folders"""
+        structure = {}
+        
+        # Group folders by sensor type
+        obs_folders = [f for f in folders if f['name'].startswith('obs_site')]
+        hobo_folders = [f for f in folders if f['name'].startswith('hobo_site')]
+        tb_folders = [f for f in folders if f['name'].startswith('tb_site')]
+        atm_folders = [f for f in folders if f['name'].startswith('atm_site')]
+        
+        if obs_folders:
+            st.success(f"🎯 **Found OBS sensor folders:** {[f['name'] for f in obs_folders]}")
+            structure['obs'] = {
+                'type': 'folder',
+                'id': 'virtual_obs',
+                'subfolders': {f['name']: {'type': 'folder', 'id': f['id']} for f in obs_folders}
+            }
+        
+        if hobo_folders:
+            st.success(f"🎯 **Found HOBO sensor folders:** {[f['name'] for f in hobo_folders]}")
+            structure['hobo'] = {
+                'type': 'folder', 
+                'id': 'virtual_hobo',
+                'subfolders': {f['name']: {'type': 'folder', 'id': f['id']} for f in hobo_folders}
+            }
+        
+        if tb_folders:
+            st.success(f"🎯 **Found TB sensor folders:** {[f['name'] for f in tb_folders]}")
+            structure['tb'] = {
+                'type': 'folder',
+                'id': 'virtual_tb', 
+                'subfolders': {f['name']: {'type': 'folder', 'id': f['id']} for f in tb_folders}
+            }
+        
+        if atm_folders:
+            st.success(f"🎯 **Found ATM sensor folders:** {[f['name'] for f in atm_folders]}")
+            structure['atmos'] = {
+                'type': 'folder',
+                'id': 'virtual_atmos',
+                'subfolders': {f['name']: {'type': 'folder', 'id': f['id']} for f in atm_folders}
+            }
+        
+        return structure
+    
     def get_folder_structure(self, folder_id=None):
         """Get the folder structure recursively"""
         if not folder_id:
@@ -257,6 +301,10 @@ class GoogleDriveManager:
                             
                             if not folder_id:
                                 st.warning("⚠️ **No 'processed' folder found even in nested folders**")
+                                
+                                # SOLUTION: Create virtual structure from accessible folders
+                                st.info("💡 **Creating virtual 'processed' structure from accessible folders**")
+                                return self._create_virtual_structure(folders)
                     else:
                         st.warning("📂 **No folders accessible to Service Account**")
                         
