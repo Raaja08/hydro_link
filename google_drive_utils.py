@@ -170,44 +170,64 @@ class GoogleDriveManager:
     def get_folder_structure(self, folder_id=None):
         """Get the folder structure recursively"""
         if not folder_id:
-            # Find the root 'processed' folder
-            folder_id = self.find_folder_by_name('processed')
+            # Debug: First, let's see ALL accessible items
+            try:
+                st.info("🔍 **Debug: Checking Google Drive access...**")
+                
+                # List all accessible folders and files
+                all_items = self.service.files().list(
+                    q="trashed=false",
+                    fields="files(id, name, mimeType, parents)",
+                    pageSize=50
+                ).execute()
+                
+                items = all_items.get('files', [])
+                if items:
+                    folders = [item for item in items if item['mimeType'] == 'application/vnd.google-apps.folder']
+                    files = [item for item in items if item['mimeType'] != 'application/vnd.google-apps.folder']
+                    
+                    st.success(f"✅ **Found {len(items)} total items ({len(folders)} folders, {len(files)} files)**")
+                    
+                    if folders:
+                        st.info(
+                            "📁 **Accessible folders:**\n\n" +
+                            "\n".join([f"• {folder['name']}" for folder in folders[:15]])
+                        )
+                        
+                        # Look for 'processed' specifically
+                        processed_folders = [f for f in folders if 'processed' in f['name'].lower()]
+                        if processed_folders:
+                            st.success(f"🎯 **Found processed-related folders:** {[f['name'] for f in processed_folders]}")
+                            folder_id = processed_folders[0]['id']  # Use the first match
+                        else:
+                            st.warning("⚠️ **No 'processed' folder found, but other folders are accessible**")
+                    else:
+                        st.warning("📂 **No folders accessible to Service Account**")
+                        
+                    if files and not folders:
+                        st.info(
+                            "� **Accessible files:**\n\n" +
+                            "\n".join([f"• {file['name']}" for file in files[:10]])
+                        )
+                else:
+                    st.error("❌ **No items accessible to Service Account - folder sharing may not have propagated yet**")
+                    
+            except Exception as e:
+                st.error(f"❌ **Debug error:** {e}")
+                
+            # If we still don't have folder_id, try the original method
+            if not folder_id:
+                folder_id = self.find_folder_by_name('processed')
+                
             if not folder_id:
                 st.error(
-                    "❌ **'processed' folder not found in Google Drive**\n\n"
-                    "**This usually means:**\n"
-                    "1. The folder hasn't been shared with the Service Account\n"
-                    "2. The folder doesn't exist\n"
-                    "3. The folder has a different name\n\n"
-                    "**To fix this:**\n"
-                    "1. Go to your Google Drive\n"
-                    "2. Right-click on your 'processed' folder\n"
-                    "3. Click 'Share'\n"
-                    "4. Add the Service Account email shown above\n"
-                    "5. Set permissions to 'Viewer'\n"
-                    "6. Click 'Send'"
+                    "❌ **'processed' folder still not found**\n\n"
+                    "**Possible solutions:**\n"
+                    "1. **Wait 5-10 minutes** - Google Drive sharing can take time to propagate\n"
+                    "2. **Check folder name** - Make sure it's exactly 'processed'\n"
+                    "3. **Re-share folder** - Try sharing again with the Service Account email\n"
+                    "4. **Check Service Account** - Verify the email is correct"
                 )
-                
-                # Debug: List all accessible folders
-                try:
-                    all_folders = self.service.files().list(
-                        q="mimeType='application/vnd.google-apps.folder' and trashed=false",
-                        fields="files(id, name, parents)",
-                        pageSize=20
-                    ).execute()
-                    
-                    accessible_folders = all_folders.get('files', [])
-                    if accessible_folders:
-                        st.info(
-                            f"🔍 **Debug: Found {len(accessible_folders)} accessible folders:**\n\n" +
-                            "\n".join([f"• {folder['name']}" for folder in accessible_folders[:10]])
-                        )
-                    else:
-                        st.warning("🔍 **Debug: No folders are accessible to the Service Account**")
-                        
-                except Exception as e:
-                    st.warning(f"🔍 **Debug: Could not list folders:** {e}")
-                
                 return {}
         
         structure = {}
@@ -229,6 +249,19 @@ class GoogleDriveManager:
                 }
         
         return structure
+    
+    def test_drive_access(self):
+        """Simple test to verify Google Drive API access"""
+        if not self.service:
+            return False, "Service not initialized"
+            
+        try:
+            # Try to list any files (minimal query)
+            results = self.service.files().list(pageSize=1).execute()
+            files = results.get('files', [])
+            return True, f"Success - can access Google Drive ({len(files)} files visible)"
+        except Exception as e:
+            return False, f"Failed - {str(e)}"
     
     def load_logo_from_drive(self, folder_id, logo_filename="logo_1.png"):
         """Load logo from Google Drive folder with GitHub fallback"""

@@ -193,6 +193,15 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.sidebar.error("❌ Failed to connect to Google Drive")
             st.stop()
     
+    # Test basic Google Drive access first
+    with st.spinner("Testing Google Drive connection..."):
+        success, message = drive_manager.test_drive_access()
+        if success:
+            st.success(f"🔗 **Google Drive Connection**: {message}")
+        else:
+            st.error(f"🔗 **Google Drive Connection Failed**: {message}")
+            st.stop()
+    
     # Get folder structure
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
