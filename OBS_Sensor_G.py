@@ -226,7 +226,28 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
                     atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
     
     if not obs_folders:
-        st.error("No OBS sensor folders found in Google Drive. Please check the folder structure.")
+        st.error(
+            "🔍 **No OBS sensor folders found in Google Drive**\n\n"
+            "**Expected folder structure:**\n"
+            "```\n"
+            "📁 processed/\n"
+            "  📁 obs/\n"
+            "    📁 obs_site1/\n"
+            "      📄 obs_s1_2023.csv\n"
+            "    📁 obs_site2/\n"
+            "      📄 obs_s2_2023.csv\n"
+            "  📁 atmos/\n"
+            "    📁 atm_site1/\n"
+            "      📄 atm_s1_2023.csv\n"
+            "  📁 sensor_metadata/\n"
+            "    📄 sensor_metadata.csv\n"
+            "```\n\n"
+            "**To fix this:**\n"
+            "1. Create a 'processed' folder in your Google Drive\n"
+            "2. Upload your sensor data following the structure above\n"
+            "3. Make sure the Google Drive folder is shared with your Service Account\n"
+            "4. Or uncheck '📁 Use Google Drive Data' to use local data for testing"
+        )
         st.stop()
     
     # Site selection

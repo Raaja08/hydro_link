@@ -186,28 +186,49 @@ class GoogleDriveManager:
         return structure
     
     def load_logo_from_drive(self, folder_id, logo_filename="logo_1.png"):
-        """Load logo from Google Drive folder and return as base64 string"""
+        """Load logo from Google Drive folder with GitHub fallback"""
         if not self.service:
-            return ""
+            return self._load_logo_from_github(logo_filename)
             
         try:
-            # Find the logo file in the specified folder
+            # Try to find the logo file in the specified Google Drive folder
             file_id = self.find_file_by_name(logo_filename, folder_id)
             if not file_id:
-                st.warning(f"⚠️ Logo file '{logo_filename}' not found in Google Drive folder")
-                return ""
+                st.info(f"ℹ️ Logo file '{logo_filename}' not found in Google Drive, using GitHub fallback")
+                return self._load_logo_from_github(logo_filename)
             
-            # Download the image file
+            # Download the image file from Google Drive
             image_bytes = self.download_image_file(file_id)
             if not image_bytes:
-                return ""
+                st.info(f"ℹ️ Could not download '{logo_filename}' from Google Drive, using GitHub fallback")
+                return self._load_logo_from_github(logo_filename)
             
             # Convert to base64
             import base64
             return base64.b64encode(image_bytes).decode()
             
         except Exception as e:
-            st.error(f"❌ Error loading logo from Google Drive: {e}")
+            st.info(f"ℹ️ Error loading logo from Google Drive ({e}), using GitHub fallback")
+            return self._load_logo_from_github(logo_filename)
+    
+    def _load_logo_from_github(self, logo_filename="logo_1.png"):
+        """Load logo from GitHub repository as fallback"""
+        try:
+            import base64
+            import requests
+            
+            # GitHub raw URL for the logo file
+            github_url = f"https://raw.githubusercontent.com/Raaja08/hydro_link/main/assets/{logo_filename}"
+            
+            response = requests.get(github_url)
+            if response.status_code == 200:
+                return base64.b64encode(response.content).decode()
+            else:
+                st.warning(f"⚠️ Could not load logo from GitHub: {response.status_code}")
+                return ""
+                
+        except Exception as e:
+            st.warning(f"⚠️ Error loading logo from GitHub: {e}")
             return ""
 
 # Singleton instance
