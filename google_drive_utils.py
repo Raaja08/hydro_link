@@ -296,6 +296,27 @@ class GoogleDriveManager:
         structure = {}
         files = self.list_files_in_folder(folder_id)
         
+        # Enhanced debugging: Show what's inside the processed folder
+        if files:
+            folder_names = [f['name'] for f in files if f['mimeType'] == 'application/vnd.google-apps.folder']
+            file_names = [f['name'] for f in files if f['mimeType'] != 'application/vnd.google-apps.folder']
+            
+            st.info(f"🔍 **Inside 'processed' folder - Found {len(files)} items:**")
+            if folder_names:
+                st.success(f"📁 **Subfolders:** {folder_names}")
+                
+                # Check specifically for OBS sensor folders
+                obs_related = [name for name in folder_names if 'obs' in name.lower()]
+                if obs_related:
+                    st.success(f"🎯 **OBS-related folders found:** {obs_related}")
+                else:
+                    st.warning("⚠️ **No OBS-related folders found in processed folder**")
+            
+            if file_names:
+                st.info(f"📄 **Files:** {file_names[:5]}{'...' if len(file_names) > 5 else ''}")
+        else:
+            st.error("❌ **No items found inside 'processed' folder - check folder permissions**")
+        
         for file in files:
             if file['mimeType'] == 'application/vnd.google-apps.folder':
                 # It's a folder
