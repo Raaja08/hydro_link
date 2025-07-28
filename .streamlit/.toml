@@ -1,7 +1,0 @@
-[[pages]]
-path = "app.py"
-name = "📈 OBS Sensor"
-
-[[pages]]
-path = "pages/hobo.py"
-name = "💧 HOBO Sensor"

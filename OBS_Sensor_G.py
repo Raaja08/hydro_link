@@ -11,13 +11,24 @@ import base64
 import tempfile
 import zipfile
 
+# Debug information
+st.sidebar.write("🔧 Debug Info:")
+st.sidebar.write(f"Streamlit version: {st.__version__}")
+st.sidebar.write(f"Current working directory: {os.getcwd()}")
+st.sidebar.write(f"Files in directory: {os.listdir('.')[:5]}...")  # Show first 5 files
+
 # Import Google Drive utilities
 try:
     from google_drive_utils import get_drive_manager
     GOOGLE_DRIVE_ENABLED = True
-except ImportError:
+except ImportError as e:
     GOOGLE_DRIVE_ENABLED = False
-    st.warning("Google Drive integration not available. Install required packages: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib")
+    st.error(f"Google Drive integration not available. Error: {e}")
+    st.info("Install required packages: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib")
+except Exception as e:
+    GOOGLE_DRIVE_ENABLED = False
+    st.error(f"Unexpected error loading Google Drive utilities: {e}")
+    st.info("Please check your configuration and try again.")
 
 # ---------------------------
 # CONFIGURATION
