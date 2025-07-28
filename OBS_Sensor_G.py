@@ -46,7 +46,7 @@ else:
     SENSOR_METADATA_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/sensor_metadata/sensor_metadata.csv"
     LOGO_PATH = "assets/logo_1.png"  # Relative path for deployment
 
-st.set_page_config(page_title="OBS Sensor Data Viewer - Google Drive", layout="wide")
+st.set_page_config(page_title="🌊 OBS Sensor Data Viewer", layout="wide")
 
 # ---------------------------
 # UTILITY FUNCTIONS
@@ -162,7 +162,7 @@ if logo_base64:
     st.markdown(f"""
         <div style='display: flex; justify-content: space-between; align-items: center; padding: 20px 10px 10px 10px;'>
             <div>
-                <h1 style='margin-bottom: 0;'>📊 S4W Sensor Dashboard (Google Drive)</h1>
+                <h1 style='margin-bottom: 0;'>🌊 S4W Sensor Dashboard</h1>
                 <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
             </div>
             <div>
@@ -173,7 +173,7 @@ if logo_base64:
 else:
     st.markdown("""
         <div style='padding: 20px 10px 10px 10px;'>
-            <h1 style='margin-bottom: 0;'>📊 S4W Sensor Dashboard (Google Drive)</h1>
+            <h1 style='margin-bottom: 0;'>🌊 S4W Sensor Dashboard</h1>
             <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
         </div>
     """, unsafe_allow_html=True)
@@ -222,7 +222,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     if 'obs' in folder_structure:
         if folder_structure['obs'].get('subfolders'):
             # Virtual structure - folders are directly accessible
-            st.success("🎯 **Using virtual structure - OBS folders found!**")
             obs_folders = folder_structure['obs']['subfolders']
         elif folder_structure['obs']['type'] == 'folder':
             # Normal structure
@@ -326,7 +325,7 @@ if selected_file:
             if atmos_file_id:
                 atmos_df = load_atmos_from_drive(atmos_file_id)
             else:
-                st.warning("Atmospheric data not found. Water level calculations may not be accurate.")
+                st.info("ℹ️ **Atmospheric data unavailable** - Water level will be displayed as absolute pressure readings")
                 atmos_df = pd.DataFrame()  # Empty dataframe
             
             # Load metadata

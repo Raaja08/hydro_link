@@ -224,7 +224,6 @@ class GoogleDriveManager:
         atm_folders = [f for f in folders if f['name'].startswith('atm_site')]
         
         if obs_folders:
-            st.success(f"🎯 **Found OBS sensor folders:** {[f['name'] for f in obs_folders]}")
             structure['obs'] = {
                 'type': 'folder',
                 'id': 'virtual_obs',
@@ -232,7 +231,6 @@ class GoogleDriveManager:
             }
         
         if hobo_folders:
-            st.success(f"🎯 **Found HOBO sensor folders:** {[f['name'] for f in hobo_folders]}")
             structure['hobo'] = {
                 'type': 'folder', 
                 'id': 'virtual_hobo',
@@ -240,7 +238,6 @@ class GoogleDriveManager:
             }
         
         if tb_folders:
-            st.success(f"🎯 **Found TB sensor folders:** {[f['name'] for f in tb_folders]}")
             structure['tb'] = {
                 'type': 'folder',
                 'id': 'virtual_tb', 
@@ -248,7 +245,6 @@ class GoogleDriveManager:
             }
         
         if atm_folders:
-            st.success(f"🎯 **Found ATM sensor folders:** {[f['name'] for f in atm_folders]}")
             structure['atmos'] = {
                 'type': 'folder',
                 'id': 'virtual_atmos',
@@ -260,10 +256,8 @@ class GoogleDriveManager:
     def get_folder_structure(self, folder_id=None):
         """Get the folder structure recursively"""
         if not folder_id:
-            # Debug: First, let's see ALL accessible items
+            # Check for accessible items without verbose debugging
             try:
-                st.info("🔍 **Debug: Checking Google Drive access...**")
-                
                 # List all accessible folders and files
                 all_items = self.service.files().list(
                     q="trashed=false",
@@ -287,7 +281,6 @@ class GoogleDriveManager:
                         # Look for 'processed' specifically
                         processed_folders = [f for f in folders if 'processed' in f['name'].lower()]
                         if processed_folders:
-                            st.success(f"🎯 **Found processed-related folders:** {[f['name'] for f in processed_folders]}")
                             folder_id = processed_folders[0]['id']  # Use the first match
                         else:
                             st.warning("⚠️ **No 'processed' folder found at root level, searching in nested folders...**")
@@ -295,7 +288,6 @@ class GoogleDriveManager:
                             for folder in folders:
                                 nested_processed = self.find_folder_by_name('processed', folder['id'])
                                 if nested_processed:
-                                    st.success(f"🎯 **Found 'processed' folder inside '{folder['name']}'**")
                                     folder_id = nested_processed
                                     break
                             
@@ -326,8 +318,6 @@ class GoogleDriveManager:
             # If still not found, try recursive search
             if not folder_id:
                 folder_id = self.find_folder_recursively('processed')
-                if folder_id:
-                    st.success("🎯 **Found 'processed' folder using recursive search!**")
                 
             if not folder_id:
                 st.error(

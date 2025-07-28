@@ -264,7 +264,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     if 'tb' in folder_structure:
         if folder_structure['tb'].get('subfolders'):
             # Virtual structure - folders are directly accessible
-            st.success("🎯 **Using virtual structure - TB folders found!**")
             tb_folders = folder_structure['tb']['subfolders']
         elif folder_structure['tb']['type'] == 'folder':
             # Normal structure

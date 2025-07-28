@@ -185,7 +185,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     if 'hobo' in folder_structure:
         if folder_structure['hobo'].get('subfolders'):
             # Virtual structure - folders are directly accessible
-            st.success("🎯 **Using virtual structure - HOBO folders found!**")
             hobo_folders = folder_structure['hobo']['subfolders']
         elif folder_structure['hobo']['type'] == 'folder':
             # Normal structure
