@@ -162,6 +162,34 @@ class GoogleDriveManager:
             st.error(f"❌ Error finding folder '{folder_name}': {e}")
             return None
     
+    def find_folder_recursively(self, folder_name, search_in_folder_id=None):
+        """Find a folder by name recursively searching through all accessible folders"""
+        try:
+            # First, try direct search (all folders with this name)
+            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            results = self.service.files().list(
+                q=query,
+                fields="files(id, name, parents)",
+                pageSize=50
+            ).execute()
+            
+            files = results.get('files', [])
+            if files:
+                # If we have a specific parent to search in, filter by that
+                if search_in_folder_id:
+                    for file in files:
+                        if file.get('parents') and search_in_folder_id in file['parents']:
+                            return file['id']
+                else:
+                    # Return the first match if no specific parent
+                    return files[0]['id']
+            
+            return None
+            
+        except Exception as e:
+            st.error(f"❌ Error in recursive folder search for '{folder_name}': {e}")
+            return None
+    
     def find_file_by_name(self, file_name, folder_id=None):
         """Find a file by name, optionally in a specific folder"""
         if not self.service:
@@ -218,7 +246,17 @@ class GoogleDriveManager:
                             st.success(f"🎯 **Found processed-related folders:** {[f['name'] for f in processed_folders]}")
                             folder_id = processed_folders[0]['id']  # Use the first match
                         else:
-                            st.warning("⚠️ **No 'processed' folder found, but other folders are accessible**")
+                            st.warning("⚠️ **No 'processed' folder found at root level, searching in nested folders...**")
+                            # Search recursively in each folder for 'processed'
+                            for folder in folders:
+                                nested_processed = self.find_folder_by_name('processed', folder['id'])
+                                if nested_processed:
+                                    st.success(f"🎯 **Found 'processed' folder inside '{folder['name']}'**")
+                                    folder_id = nested_processed
+                                    break
+                            
+                            if not folder_id:
+                                st.warning("⚠️ **No 'processed' folder found even in nested folders**")
                     else:
                         st.warning("📂 **No folders accessible to Service Account**")
                         
@@ -233,9 +271,15 @@ class GoogleDriveManager:
             except Exception as e:
                 st.error(f"❌ **Debug error:** {e}")
                 
-            # If we still don't have folder_id, try the original method
+            # If we still don't have folder_id, try the original method and then recursive search
             if not folder_id:
                 folder_id = self.find_folder_by_name('processed')
+                
+            # If still not found, try recursive search
+            if not folder_id:
+                folder_id = self.find_folder_recursively('processed')
+                if folder_id:
+                    st.success("🎯 **Found 'processed' folder using recursive search!**")
                 
             if not folder_id:
                 st.error(
@@ -244,7 +288,8 @@ class GoogleDriveManager:
                     "1. **Wait 5-10 minutes** - Google Drive sharing can take time to propagate\n"
                     "2. **Check folder name** - Make sure it's exactly 'processed'\n"
                     "3. **Re-share folder** - Try sharing again with the Service Account email\n"
-                    "4. **Check Service Account** - Verify the email is correct"
+                    "4. **Check Service Account** - Verify the email is correct\n"
+                    "5. **Check nesting** - The 'processed' folder might be nested deeper than expected"
                 )
                 return {}
         
