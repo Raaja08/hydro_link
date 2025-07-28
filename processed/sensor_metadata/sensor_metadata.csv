@@ -1,0 +1,5 @@
+site,sensor_id,sensor_type,sensor_height_m,location,remarks
+obs_site1,obs_s1_2023,obs,0.127,Nakkhudole,sensor 301
+obs_site2,obs_s2_2023,obs,0.127,Nakkhudole,sensor 305
+hobo_site1,hobo_s1_2023,hobo,0.1,Gonsal,
+hobo_site1,hobo_s2_2023,hobo,0.1,Thapakhola,
