@@ -224,6 +224,11 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
     
+    # Debug: Show folder structure
+    st.sidebar.write("📁 **Found folders:**")
+    for folder_name in folder_structure.keys():
+        st.sidebar.write(f"  • {folder_name}")
+    
     # Find OBS folders (processed/obs structure or virtual structure)
     obs_folders = {}
     metadata_file_id = None
@@ -265,13 +270,34 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     
     # Handle virtual structure for atmos data
     if not atmos_file_id and 'atmos' in folder_structure:
+        st.sidebar.write("🔍 Checking virtual atmos structure...")
         if folder_structure['atmos'].get('subfolders'):
             # Virtual structure - check for atm_site1 directly
             atm_folders = folder_structure['atmos']['subfolders']
+            st.sidebar.write(f"  • Found atmos subfolders: {list(atm_folders.keys())}")
             if 'atm_site1' in atm_folders:
                 atm_site1_contents = drive_manager.get_folder_structure(atm_folders['atm_site1']['id'])
+                st.sidebar.write(f"  • atm_site1 contents: {list(atm_site1_contents.keys())}")
                 if 'atm_s1_2023.csv' in atm_site1_contents:
                     atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
+                    st.sidebar.write("  ✅ Found atmospheric data file!")
+                else:
+                    st.sidebar.write("  ❌ atm_s1_2023.csv not found in atm_site1")
+            else:
+                st.sidebar.write("  ❌ atm_site1 folder not found in atmos")
+        else:
+            st.sidebar.write("  ❌ No subfolders found in atmos structure")
+    else:
+        if not atmos_file_id:
+            st.sidebar.write("🔍 No atmos folder found in root structure")
+        else:
+            st.sidebar.write("✅ Atmospheric data already found in processed structure")
+    
+    # Final atmospheric data status
+    if atmos_file_id:
+        st.sidebar.success("🌤️ Atmospheric data: Available")
+    else:
+        st.sidebar.warning("⚠️ Atmospheric data: Not found")
     
     if not obs_folders:
         st.error(
