@@ -296,10 +296,11 @@ class GoogleDriveManager:
                         pass
                         
                     if files and not folders:
-                        st.info(
-                            "� **Accessible files:**\n\n" +
-                            "\n".join([f"• {file['name']}" for file in files[:10]])
-                        )
+                        # st.info(
+                            # "📁 **Accessible files:**\n\n" +
+                            # "\n".join([f"• {file['name']}" for file in files[:10]])
+                        # )
+                        pass
                 else:
                     # st.error("❌ **No items accessible to Service Account - folder sharing may not have propagated yet**")
                     pass
