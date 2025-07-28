@@ -206,9 +206,13 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.error(f"🔗 **Google Drive Connection Failed**: {message}")
             st.stop()
     
-    # Get folder structure
+    # Get folder structure (clear cache)
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
+    
+    # Clear any cached debugging output
+    st.empty()
+    
     # Clear cache to force fresh deployment
     obs_folders = {}
     metadata_file_id = None
