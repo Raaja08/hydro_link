@@ -173,7 +173,41 @@ class GoogleDriveManager:
             # Find the root 'processed' folder
             folder_id = self.find_folder_by_name('processed')
             if not folder_id:
-                st.error("❌ 'processed' folder not found in Google Drive. Please check folder sharing and structure.")
+                st.error(
+                    "❌ **'processed' folder not found in Google Drive**\n\n"
+                    "**This usually means:**\n"
+                    "1. The folder hasn't been shared with the Service Account\n"
+                    "2. The folder doesn't exist\n"
+                    "3. The folder has a different name\n\n"
+                    "**To fix this:**\n"
+                    "1. Go to your Google Drive\n"
+                    "2. Right-click on your 'processed' folder\n"
+                    "3. Click 'Share'\n"
+                    "4. Add the Service Account email shown above\n"
+                    "5. Set permissions to 'Viewer'\n"
+                    "6. Click 'Send'"
+                )
+                
+                # Debug: List all accessible folders
+                try:
+                    all_folders = self.service.files().list(
+                        q="mimeType='application/vnd.google-apps.folder' and trashed=false",
+                        fields="files(id, name, parents)",
+                        pageSize=20
+                    ).execute()
+                    
+                    accessible_folders = all_folders.get('files', [])
+                    if accessible_folders:
+                        st.info(
+                            f"🔍 **Debug: Found {len(accessible_folders)} accessible folders:**\n\n" +
+                            "\n".join([f"• {folder['name']}" for folder in accessible_folders[:10]])
+                        )
+                    else:
+                        st.warning("🔍 **Debug: No folders are accessible to the Service Account**")
+                        
+                except Exception as e:
+                    st.warning(f"🔍 **Debug: Could not list folders:** {e}")
+                
                 return {}
         
         structure = {}
