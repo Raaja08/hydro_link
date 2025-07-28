@@ -122,86 +122,89 @@ def load_logo_from_google_drive(gd_manager, logo_folder_id, logo_filename="logo_
 def get_summary_stats(df, view_mode, plot_df, agg_type=None):
     """
     Calculate comprehensive summary statistics for the given data.
-    Returns None if there's missing data in the reindexed data for the selected period, otherwise returns stats dict.
+    Returns None if there's missing data in the plot data, otherwise returns stats dict.
     """
-    # Check if there are any missing values in the reindexed data
-    if plot_df.isna().any().any():
+    # Check if there are any missing values in the plot data (following original guide)
+    if plot_df[plot_df.columns[0]].isna().any():
         return None
     
     stats = {}
     
     if view_mode == "Daily":
         # Daily: Total, Maximum (with dynamic label based on aggregation)
-        stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-        
-        # Dynamic maximum label based on aggregation type
-        if agg_type == "15-min":
-            stats["Maximum 15-min rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
-        else:
-            stats["Maximum hourly rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+        if 'rainfall_mm' in plot_df.columns:
+            stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+            
+            # Dynamic maximum label based on aggregation type
+            if agg_type == "15-min":
+                stats["Maximum 15-min rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+            else:
+                stats["Maximum hourly rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
         
     elif view_mode == "Monthly":
         # Monthly: Total, Max daily, Wet-dry days, Dry spell, Average
-        stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-        stats["Max daily rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
-        stats["Wet days"] = (plot_df['rainfall_mm'] > 0).sum()
-        stats["Dry days"] = (plot_df['rainfall_mm'] == 0).sum()
-        
-        # Calculate longest dry spell (consecutive days with no rain)
-        rainfall_series = plot_df['rainfall_mm']
-        max_dry_spell = 0
-        current_dry = 0
-        for val in rainfall_series:
-            if val == 0:
-                current_dry += 1
-                max_dry_spell = max(max_dry_spell, current_dry)
-            else:
-                current_dry = 0
-        stats["Longest dry spell (days)"] = max_dry_spell
-        
-        # Average from non-zero values only
-        non_zero_vals = plot_df['rainfall_mm'][plot_df['rainfall_mm'] > 0]
-        avg_rainfall = non_zero_vals.mean() if len(non_zero_vals) > 0 else 0
-        stats["Average daily rainfall (mm)"] = round(avg_rainfall, 2) if avg_rainfall > 0 else 0
+        if 'rainfall_mm' in plot_df.columns:
+            stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+            stats["Max daily rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+            stats["Wet days"] = (plot_df['rainfall_mm'] > 0).sum()
+            stats["Dry days"] = (plot_df['rainfall_mm'] == 0).sum()
+            
+            # Calculate longest dry spell (consecutive days with no rain)
+            rainfall_series = plot_df['rainfall_mm']
+            max_dry_spell = 0
+            current_dry = 0
+            for val in rainfall_series:
+                if val == 0:
+                    current_dry += 1
+                    max_dry_spell = max(max_dry_spell, current_dry)
+                else:
+                    current_dry = 0
+            stats["Longest dry spell (days)"] = max_dry_spell
+            
+            # Average from non-zero values only
+            non_zero_vals = plot_df['rainfall_mm'][plot_df['rainfall_mm'] > 0]
+            avg_rainfall = non_zero_vals.mean() if len(non_zero_vals) > 0 else 0
+            stats["Average daily rainfall (mm)"] = round(avg_rainfall, 2) if avg_rainfall > 0 else 0
         
     elif view_mode == "Yearly":
         # Yearly: Annual total, Wettest month, Dry months, Wet-dry days, Longest dry spell
-        stats["Annual total (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-        
-        # Wettest month
-        if plot_df['rainfall_mm'].max() > 0:
-            wettest = plot_df['rainfall_mm'].idxmax()
-            stats["Wettest month"] = f"{wettest.strftime('%B')} ({round(plot_df['rainfall_mm'].max(), 2)} mm)"
-        else:
-            stats["Wettest month"] = "N/A"
+        if 'rainfall_mm' in plot_df.columns:
+            stats["Annual total (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
             
-        stats["Dry months"] = (plot_df['rainfall_mm'] == 0).sum()
-        stats["Wet months"] = (plot_df['rainfall_mm'] > 0).sum()
-        
-        # Longest dry spell in days (convert from monthly data)
-        # For yearly view, we need to estimate days from months
-        rainfall_series = plot_df['rainfall_mm']
-        max_dry_spell_months = 0
-        current_dry = 0
-        for val in rainfall_series:
-            if val == 0:
-                current_dry += 1
-                max_dry_spell_months = max(max_dry_spell_months, current_dry)
+            # Wettest month
+            if plot_df['rainfall_mm'].max() > 0:
+                wettest = plot_df['rainfall_mm'].idxmax()
+                stats["Wettest month"] = f"{wettest.strftime('%B')} ({round(plot_df['rainfall_mm'].max(), 2)} mm)"
             else:
-                current_dry = 0
-        # Convert months to approximate days (30 days per month)
-        stats["Longest dry spell (days)"] = max_dry_spell_months * 30
+                stats["Wettest month"] = "N/A"
+                
+            stats["Dry months"] = (plot_df['rainfall_mm'] == 0).sum()
+            stats["Wet months"] = (plot_df['rainfall_mm'] > 0).sum()
+            
+            # Longest dry spell in days (convert from monthly data)
+            # For yearly view, we need to estimate days from months
+            rainfall_series = plot_df['rainfall_mm']
+            max_dry_spell_months = 0
+            current_dry = 0
+            for val in rainfall_series:
+                if val == 0:
+                    current_dry += 1
+                    max_dry_spell_months = max(max_dry_spell_months, current_dry)
+                else:
+                    current_dry = 0
+            # Convert months to approximate days (30 days per month)
+            stats["Longest dry spell (days)"] = max_dry_spell_months * 30
         
     elif view_mode == "Custom":
-        # For custom, be more lenient - only check if most data is missing
-        missing_ratio = plot_df.isna().sum().sum() / len(plot_df)
-        if missing_ratio > 0.5:  # If more than 50% is missing
+        # For custom view, follow original guide - check for any missing data
+        if plot_df[plot_df.columns[0]].isna().any():
             return None
             
-        stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-        stats["Max rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
-        stats["Intervals with rainfall"] = (plot_df['rainfall_mm'] > 0).sum()
-        stats["Average rainfall per interval (mm)"] = round(plot_df['rainfall_mm'].mean(), 2)
+        if 'rainfall_mm' in plot_df.columns:
+            stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+            stats["Max rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+            stats["Intervals with rainfall"] = (plot_df['rainfall_mm'] > 0).sum()
+            stats["Average rainfall per interval (mm)"] = round(plot_df['rainfall_mm'].mean(), 2)
     
     return stats
 
@@ -489,8 +492,8 @@ if selected_file:
 
         # For rainfall, create cumulative; for temperature, don't
         if data_type == "Rainfall":
-            # Calculate cumulative rainfall using fillna(0) for cumulative calculation only
-            plot_df['cumulative_rainfall'] = plot_df[data_column].fillna(0).cumsum()
+            # Calculate cumulative rainfall - cumsum() naturally handles NaN values
+            plot_df['cumulative_rainfall'] = plot_df[data_column].cumsum()
             show_cumulative = True
         else:
             show_cumulative = False
