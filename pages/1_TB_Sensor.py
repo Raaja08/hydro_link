@@ -122,27 +122,11 @@ def load_logo_from_google_drive(gd_manager, logo_folder_id, logo_filename="logo_
 def get_summary_stats(df, view_mode, plot_df, agg_type=None):
     """
     Calculate comprehensive summary statistics for the given data.
-    Returns None if there's missing data in the original period, otherwise returns stats dict.
+    Returns None if there's missing data in the reindexed data for the selected period, otherwise returns stats dict.
     """
-    # Check if there are any missing values in the original data for the selected period
-    # Since plot_df now has NaN values removed, we need to check the original data
-    if view_mode == "Daily":
-        # For daily view, check if we have data for every expected interval
-        expected_intervals = 24 if agg_type != "15-min" else 96  # 24 hours or 96 15-min intervals
-        if len(plot_df) < expected_intervals:
-            return None
-    elif view_mode == "Monthly":
-        # For monthly view, check if we have data for most days (allow some missing days)
-        expected_days = pd.Timestamp(df.index.max()).days_in_month if not df.empty else 30
-        if len(plot_df) < expected_days * 0.8:  # Allow 20% missing days
-            return None
-    elif view_mode == "Yearly":
-        # For yearly view, check if we have data for most months
-        if len(plot_df) < 10:  # Require at least 10 months of data
-            return None
-    elif view_mode == "Custom":
-        # For custom view, be more lenient with missing data
-        pass
+    # Check if there are any missing values in the reindexed data
+    if plot_df.isna().any().any():
+        return None
     
     stats = {}
     
@@ -164,7 +148,7 @@ def get_summary_stats(df, view_mode, plot_df, agg_type=None):
         stats["Dry days"] = (plot_df['rainfall_mm'] == 0).sum()
         
         # Calculate longest dry spell (consecutive days with no rain)
-        rainfall_series = plot_df['rainfall_mm'].fillna(0)
+        rainfall_series = plot_df['rainfall_mm']
         max_dry_spell = 0
         current_dry = 0
         for val in rainfall_series:
@@ -191,12 +175,12 @@ def get_summary_stats(df, view_mode, plot_df, agg_type=None):
         else:
             stats["Wettest month"] = "N/A"
             
-        stats["Dry months"] = (plot_df['rainfall_mm'] == 0).sum() + plot_df['rainfall_mm'].isna().sum()
+        stats["Dry months"] = (plot_df['rainfall_mm'] == 0).sum()
         stats["Wet months"] = (plot_df['rainfall_mm'] > 0).sum()
         
         # Longest dry spell in days (convert from monthly data)
         # For yearly view, we need to estimate days from months
-        rainfall_series = plot_df['rainfall_mm'].fillna(0)
+        rainfall_series = plot_df['rainfall_mm']
         max_dry_spell_months = 0
         current_dry = 0
         for val in rainfall_series:
@@ -209,6 +193,11 @@ def get_summary_stats(df, view_mode, plot_df, agg_type=None):
         stats["Longest dry spell (days)"] = max_dry_spell_months * 30
         
     elif view_mode == "Custom":
+        # For custom, be more lenient - only check if most data is missing
+        missing_ratio = plot_df.isna().sum().sum() / len(plot_df)
+        if missing_ratio > 0.5:  # If more than 50% is missing
+            return None
+            
         stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
         stats["Max rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
         stats["Intervals with rainfall"] = (plot_df['rainfall_mm'] > 0).sum()
@@ -367,28 +356,28 @@ if selected_file:
         # Determine aggregation based on date range
         date_diff = (end - start).days
         if date_diff <= 7:
-            # Only aggregate periods with actual data (skip missing values)
-            plot_df = filtered_df.resample('H').agg({
+            # Create continuous hourly index and reindex with NaN for missing periods
+            full_range = pd.date_range(start=pd.Timestamp(start), end=pd.Timestamp(end) + pd.Timedelta(days=1), freq='H', inclusive='left')
+            hourly_data = filtered_df.resample('H').agg({
                 data_column: agg_func
             })
-            # Remove NaN values to show gaps instead of zeros
-            plot_df = plot_df.dropna()
+            plot_df = hourly_data.reindex(full_range)
             freq_text = "Hourly"
         elif date_diff <= 90:
-            # Only aggregate periods with actual data (skip missing values)
-            plot_df = filtered_df.resample('D').agg({
+            # Create continuous daily index
+            full_range = pd.date_range(start=start, end=end, freq='D')
+            daily_data = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
-            # Remove NaN values to show gaps instead of zeros
-            plot_df = plot_df.dropna()
+            plot_df = daily_data.reindex(full_range)
             freq_text = "Daily"
         else:
-            # Only aggregate periods with actual data (skip missing values)
-            plot_df = filtered_df.resample('MS').agg({
+            # Create continuous monthly index
+            full_range = pd.date_range(start=pd.Timestamp(start).replace(day=1), end=pd.Timestamp(end), freq='MS')
+            monthly_data = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
-            # Remove NaN values to show gaps instead of zeros
-            plot_df = plot_df.dropna()
+            plot_df = monthly_data.reindex(full_range)
             freq_text = "Monthly"
         
         time_title = f"{start.strftime('%b %d, %Y')} to {end.strftime('%b %d, %Y')} ({freq_text})"
@@ -431,37 +420,54 @@ if selected_file:
         filtered_df = df[(df.index >= selected_bin) & (df.index < selected_end)]
 
         if view_mode == "Daily":
-            # Create continuous hourly index for the selected day
+            # Create continuous time index for the selected day
             agg = st.sidebar.radio("Aggregation:", ["15-min", "Hourly"])
             freq = "15min" if agg == "15-min" else "H"
             
-            # Only aggregate periods with actual data (skip missing values)
-            plot_df = filtered_df.resample(freq).agg({
+            # Create full continuous range for the selected day
+            start_time = selected_bin
+            end_time = selected_bin + timedelta(days=1)
+            full_range = pd.date_range(start=start_time, end=end_time, freq=freq, inclusive='left')
+            
+            # Aggregate and reindex to show missing periods as NaN
+            aggregated_data = filtered_df.resample(freq).agg({
                 data_column: agg_func
             })
-            # Remove NaN values to show gaps instead of zeros
-            plot_df = plot_df.dropna()
+            plot_df = aggregated_data.reindex(full_range)
             
             # Create title
             interval_text = "15 min interval" if agg == "15-min" else "one hour interval"
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Daily: {selected_bin.strftime('%B %d, %Y')} - {interval_text})"
         elif view_mode == "Monthly":
-            # Only aggregate periods with actual data (skip missing values)
-            plot_df = filtered_df.resample('D').agg({
+            # Create continuous daily index for the selected month
+            start_date = selected_bin
+            if selected_bin.month == 12:
+                end_date = selected_bin.replace(year=selected_bin.year+1, month=1, day=1)
+            else:
+                end_date = selected_bin.replace(month=selected_bin.month+1, day=1)
+            
+            full_range = pd.date_range(start=start_date, end=end_date, freq='D', inclusive='left')
+            
+            # Aggregate and reindex to show missing periods as NaN
+            aggregated_data = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
-            # Remove NaN values to show gaps instead of zeros
-            plot_df = plot_df.dropna()
+            plot_df = aggregated_data.reindex(full_range)
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Monthly: {selected_bin.strftime('%B %Y')})"
         else:  # Yearly
-            # Only aggregate periods with actual data (skip missing values)
-            plot_df = filtered_df.resample('MS').agg({
+            # Create continuous monthly index for the selected year
+            start_date = selected_bin
+            end_date = selected_bin.replace(year=selected_bin.year+1)
+            
+            full_range = pd.date_range(start=start_date, end=end_date, freq='MS', inclusive='left')
+            
+            # Aggregate and reindex to show missing periods as NaN
+            aggregated_data = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
-            # Remove NaN values to show gaps instead of zeros
-            plot_df = plot_df.dropna()
+            plot_df = aggregated_data.reindex(full_range)
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Yearly: {selected_bin.strftime('%Y')})"
 
@@ -473,17 +479,25 @@ if selected_file:
     if plot_df.empty:
         st.warning("No data available for the selected time period.")
     else:
+        # Check for missing data and show warning if found
+        has_missing_data = plot_df.isna().any().any()
+        if has_missing_data:
+            if data_type == "Temperature":
+                st.warning("⚠️ Some data points are missing for this period. Gaps will be visible in the plot.")
+            else:
+                st.warning("⚠️ Some data points are missing for this period. Gaps will be visible in the plot.")
+
         # For rainfall, create cumulative; for temperature, don't
         if data_type == "Rainfall":
-            # Calculate cumulative rainfall from available data only
-            plot_df['cumulative_rainfall'] = plot_df[data_column].cumsum()
+            # Calculate cumulative rainfall using fillna(0) for cumulative calculation only
+            plot_df['cumulative_rainfall'] = plot_df[data_column].fillna(0).cumsum()
             show_cumulative = True
         else:
             show_cumulative = False
         
         # Create the appropriate plot type
         if data_type == "Rainfall":
-            # Bar chart for rainfall
+            # Bar chart for rainfall - gaps will show as missing bars
             fig = px.bar(
                 plot_df, y=data_column,
                 title=time_title,
@@ -492,7 +506,7 @@ if selected_file:
                 color_discrete_sequence=["#1f77b4"]
             )
         else:
-            # Line chart for temperature
+            # Line chart for temperature - gaps will show as disconnected lines
             fig = px.line(
                 plot_df, y=data_column,
                 title=time_title,
@@ -500,8 +514,8 @@ if selected_file:
                 template="plotly_white",
                 color_discrete_sequence=["#1f77b4"]  # Same blue as rainfall
             )
-            # Add markers to the line
-            fig.update_traces(mode='lines+markers')
+            # Add markers to the line and ensure gaps are not connected
+            fig.update_traces(mode='lines+markers', connectgaps=False)
         
         # Calculate y-axis max (higher than highest value)
         max_data = plot_df[data_column].max()
@@ -545,7 +559,7 @@ if selected_file:
                 name="Cumulative Rainfall", 
                 line=dict(color="#00509E"),
                 yaxis="y2",
-                connectgaps=False  # This ensures gaps are visible in the line
+                connectgaps=False  # This ensures gaps are visible in the cumulative line
             )
         
         # Update layout - dual y-axis for rainfall, single for temperature
