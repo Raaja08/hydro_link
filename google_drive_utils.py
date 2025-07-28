@@ -289,10 +289,10 @@ class GoogleDriveManager:
                                 st.warning("⚠️ **No 'processed' folder found even in nested folders**")
                                 
                                 # SOLUTION: Create virtual structure from accessible folders
-                                st.info("💡 **Creating virtual 'processed' structure from accessible folders**")
+                                # st.info("💡 **Creating virtual 'processed' structure from accessible folders**")
                                 return self._create_virtual_structure(folders)
                     else:
-                        st.warning("📂 **No folders accessible to Service Account**")
+                        # st.warning("📂 **No folders accessible to Service Account**")
                         
                     if files and not folders:
                         st.info(
@@ -300,7 +300,7 @@ class GoogleDriveManager:
                             "\n".join([f"• {file['name']}" for file in files[:10]])
                         )
                 else:
-                    st.error("❌ **No items accessible to Service Account - folder sharing may not have propagated yet**")
+                    # st.error("❌ **No items accessible to Service Account - folder sharing may not have propagated yet**")
                     
             except Exception as e:
                 st.error(f"❌ **Debug error:** {e}")
