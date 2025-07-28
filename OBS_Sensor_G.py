@@ -287,6 +287,17 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
                 st.sidebar.write("  ❌ atm_site1 folder not found in atmos")
         else:
             st.sidebar.write("  ❌ No subfolders found in atmos structure")
+            # Try direct folder access as fallback
+            try:
+                atmos_direct = drive_manager.get_folder_structure(folder_structure['atmos']['id'])
+                st.sidebar.write(f"  🔍 Direct atmos contents: {list(atmos_direct.keys())}")
+                if 'atm_site1' in atmos_direct:
+                    atm_site1_contents = drive_manager.get_folder_structure(atmos_direct['atm_site1']['id'])
+                    if 'atm_s1_2023.csv' in atm_site1_contents:
+                        atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
+                        st.sidebar.write("  ✅ Found atmospheric data via direct access!")
+            except Exception as e:
+                st.sidebar.write(f"  ❌ Cannot access atmos folder directly: {str(e)[:50]}...")
     else:
         if not atmos_file_id:
             st.sidebar.write("🔍 No atmos folder found in root structure")
