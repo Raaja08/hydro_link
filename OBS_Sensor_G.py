@@ -16,6 +16,7 @@ st.sidebar.write("🔧 Debug Info:")
 st.sidebar.write(f"Streamlit version: {st.__version__}")
 st.sidebar.write(f"Current working directory: {os.getcwd()}")
 st.sidebar.write(f"Files in directory: {os.listdir('.')[:5]}...")  # Show first 5 files
+st.sidebar.write("🔄 App redeployed successfully!")
 
 # Import Google Drive utilities
 try:
