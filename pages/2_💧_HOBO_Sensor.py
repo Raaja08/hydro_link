@@ -144,7 +144,7 @@ if logo_base64:
     st.markdown(f"""
         <div style='display: flex; justify-content: space-between; align-items: center; padding: 20px 10px 10px 10px;'>
             <div>
-                <h1 style='margin-bottom: 0;'>📊 S4W Sensor Dashboard (Google Drive)</h1>
+                <h1 style='margin-bottom: 0;'>🌊 S4W Sensor Dashboard</h1>
                 <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
             </div>
             <div>
@@ -155,7 +155,7 @@ if logo_base64:
 else:
     st.markdown("""
         <div style='padding: 20px 10px 10px 10px;'>
-            <h1 style='margin-bottom: 0;'>📊 S4W Sensor Dashboard (Google Drive)</h1>
+            <h1 style='margin-bottom: 0;'>🌊 S4W Sensor Dashboard</h1>
             <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
         </div>
     """, unsafe_allow_html=True)# ---------------------------

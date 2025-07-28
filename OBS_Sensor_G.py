@@ -51,7 +51,7 @@ else:
     SENSOR_METADATA_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/sensor_metadata/sensor_metadata.csv"
     LOGO_PATH = "assets/logo_1.png"  # Relative path for deployment
 
-st.set_page_config(page_title="🌊 OBS Sensor Data Viewer", layout="wide")
+st.set_page_config(page_title="📡 OBS Sensor", layout="wide")
 
 # ---------------------------
 # UTILITY FUNCTIONS
@@ -188,7 +188,6 @@ else:
 # ---------------------------
 if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     # Google Drive file selection
-    st.sidebar.markdown("### 📁 Google Drive Data Source")
     
     drive_manager = get_drive_manager()
     
