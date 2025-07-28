@@ -51,7 +51,7 @@ else:
     SENSOR_METADATA_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/sensor_metadata/sensor_metadata.csv"
     LOGO_PATH = "assets/logo_1.png"  # Relative path for deployment
 
-st.set_page_config(page_title="📡 OBS Sensor", layout="wide")
+st.set_page_config(page_title="� OBS Sensor", layout="wide")
 
 # ---------------------------
 # UTILITY FUNCTIONS
