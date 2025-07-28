@@ -17,7 +17,11 @@ class GoogleDriveManager:
         """Authenticate with Google Drive API using Service Account"""
         try:
             # Try to get credentials from Streamlit secrets (for cloud deployment)
-            if hasattr(st, 'secrets') and 'service_account' in st.secrets:
+            if hasattr(st, 'secrets') and 'google_drive' in st.secrets:
+                creds_dict = dict(st.secrets["google_drive"])
+                creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=self.SCOPES)
+            # Fallback to service_account key (alternative naming)
+            elif hasattr(st, 'secrets') and 'service_account' in st.secrets:
                 creds_dict = dict(st.secrets["service_account"])
                 creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=self.SCOPES)
             # Fallback to local service account file (for local development)
@@ -27,7 +31,7 @@ class GoogleDriveManager:
                 st.error(
                     "🔑 **Service Account credentials not found**\n\n"
                     "For local development: Add `service_account.json` file to project root.\n\n"
-                    "For deployment: Configure `service_account` in Streamlit secrets."
+                    "For deployment: Configure `google_drive` in Streamlit secrets."
                 )
                 return False
             
