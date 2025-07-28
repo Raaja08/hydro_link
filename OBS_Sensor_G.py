@@ -186,15 +186,21 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     st.sidebar.markdown("### 📁 Google Drive Data Source")
     
     drive_manager = get_drive_manager()
-    if not drive_manager.service:
-        if drive_manager.authenticate():
-            st.sidebar.success("✅ Connected to Google Drive")
-        else:
-            st.sidebar.error("❌ Failed to connect to Google Drive")
-            st.stop()
     
-    # Test basic Google Drive access first
-    with st.spinner("Testing Google Drive connection..."):
+    # Authenticate and test connection
+    with st.spinner("Connecting to Google Drive..."):
+        if not drive_manager.authenticate():
+            st.error("❌ Failed to connect to Google Drive")
+            st.stop()
+        
+        # Display Service Account info
+        service_email = drive_manager.get_service_account_email()
+        st.info(
+            f"🔑 **Service Account Email:** `{service_email}`\n\n"
+            f"📁 **To access Google Drive data:** Share your 'processed' folder with this email address"
+        )
+        
+        # Test basic access
         success, message = drive_manager.test_drive_access()
         if success:
             st.success(f"🔗 **Google Drive Connection**: {message}")

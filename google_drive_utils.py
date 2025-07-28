@@ -32,26 +32,24 @@ class GoogleDriveManager:
                 with open('service_account.json', 'r') as f:
                     creds_dict = json.load(f)
             else:
-                st.error(
-                    "🔑 **Service Account credentials not found**\n\n"
-                    "For local development: Add `service_account.json` file to project root.\n\n"
-                    "For deployment: Configure `google_drive` in Streamlit secrets."
-                )
                 return False
             
-            # Display Service Account email for sharing
-            if creds_dict and 'client_email' in creds_dict:
-                st.info(
-                    f"🔑 **Service Account Email:** `{creds_dict['client_email']}`\n\n"
-                    f"📁 **To access Google Drive data:** Share your 'processed' folder with this email address"
-                )
-            
             self.service = build('drive', 'v3', credentials=creds)
+            
+            # Store credentials for display (after successful authentication)
+            if creds_dict and 'client_email' in creds_dict:
+                self._service_account_email = creds_dict['client_email']
+            
             return True
             
         except Exception as e:
-            st.error(f"❌ Authentication failed: {e}")
             return False
+    
+    def get_service_account_email(self):
+        """Get the service account email for display purposes"""
+        if hasattr(self, '_service_account_email'):
+            return self._service_account_email
+        return "Not available"
     
     def list_files_in_folder(self, folder_id):
         """List all files in a specific Google Drive folder"""
