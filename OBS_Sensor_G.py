@@ -11,13 +11,6 @@ import base64
 import tempfile
 import zipfile
 
-# Debug information
-st.sidebar.write("🔧 Debug Info:")
-st.sidebar.write(f"Streamlit version: {st.__version__}")
-st.sidebar.write(f"Current working directory: {os.getcwd()}")
-st.sidebar.write(f"Files in directory: {os.listdir('.')[:5]}...")  # Show first 5 files
-st.sidebar.write("🔄 App redeployed successfully!")
-
 # Import Google Drive utilities
 try:
     from google_drive_utils import get_drive_manager
@@ -205,18 +198,10 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.error("❌ Failed to connect to Google Drive")
             st.stop()
         
-        # Display Service Account info (only after successful authentication)
-        service_email = drive_manager.get_service_account_email()
-        if service_email != "Not available":
-            st.info(
-                f"🔑 **Service Account Email:** `{service_email}`\n\n"
-                f"📁 **To access Google Drive data:** Share your 'processed' folder with this email address"
-            )
-        
         # Test basic access
         success, message = drive_manager.test_drive_access()
         if success:
-            st.success(f"🔗 **Google Drive Connection**: {message}")
+            st.sidebar.success("🔗 Google Drive: Connected")
         else:
             st.error(f"🔗 **Google Drive Connection Failed**: {message}")
             st.stop()
@@ -224,12 +209,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     # Get folder structure
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
-    
-    # Debug: Show folder structure
-    st.sidebar.write("📁 **Found folders:**")
-    for folder_name in folder_structure.keys():
-        st.sidebar.write(f"  • {folder_name}")
-    
     # Find OBS folders (processed/obs structure or virtual structure)
     obs_folders = {}
     metadata_file_id = None
@@ -271,39 +250,23 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     
     # Handle virtual structure for atmos data
     if not atmos_file_id and 'atmos' in folder_structure:
-        st.sidebar.write("🔍 Checking virtual atmos structure...")
         if folder_structure['atmos'].get('subfolders'):
             # Virtual structure - check for atm_site1 directly
             atm_folders = folder_structure['atmos']['subfolders']
-            st.sidebar.write(f"  • Found atmos subfolders: {list(atm_folders.keys())}")
             if 'atm_site1' in atm_folders:
                 atm_site1_contents = drive_manager.get_folder_structure(atm_folders['atm_site1']['id'])
-                st.sidebar.write(f"  • atm_site1 contents: {list(atm_site1_contents.keys())}")
                 if 'atm_s1_2023.csv' in atm_site1_contents:
                     atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
-                    st.sidebar.write("  ✅ Found atmospheric data file!")
-                else:
-                    st.sidebar.write("  ❌ atm_s1_2023.csv not found in atm_site1")
-            else:
-                st.sidebar.write("  ❌ atm_site1 folder not found in atmos")
         else:
-            st.sidebar.write("  ❌ No subfolders found in atmos structure")
             # Try direct folder access as fallback
             try:
                 atmos_direct = drive_manager.get_folder_structure(folder_structure['atmos']['id'])
-                st.sidebar.write(f"  🔍 Direct atmos contents: {list(atmos_direct.keys())}")
                 if 'atm_site1' in atmos_direct:
                     atm_site1_contents = drive_manager.get_folder_structure(atmos_direct['atm_site1']['id'])
                     if 'atm_s1_2023.csv' in atm_site1_contents:
                         atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
-                        st.sidebar.write("  ✅ Found atmospheric data via direct access!")
-            except Exception as e:
-                st.sidebar.write(f"  ❌ Cannot access atmos folder directly: {str(e)[:50]}...")
-    else:
-        if not atmos_file_id:
-            st.sidebar.write("🔍 No atmos folder found in root structure")
-        else:
-            st.sidebar.write("✅ Atmospheric data already found in processed structure")
+            except Exception:
+                pass  # Silently handle access errors
     
     # Final atmospheric data status
     if atmos_file_id:
@@ -312,28 +275,7 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
         st.sidebar.warning("⚠️ Atmospheric data: Not found")
     
     if not obs_folders:
-        st.error(
-            "🔍 **No OBS sensor folders found in Google Drive**\n\n"
-            "**Expected folder structure:**\n"
-            "```\n"
-            "📁 processed/\n"
-            "  📁 obs/\n"
-            "    📁 obs_site1/\n"
-            "      📄 obs_s1_2023.csv\n"
-            "    📁 obs_site2/\n"
-            "      📄 obs_s2_2023.csv\n"
-            "  📁 atmos/\n"
-            "    📁 atm_site1/\n"
-            "      📄 atm_s1_2023.csv\n"
-            "  📁 sensor_metadata/\n"
-            "    📄 sensor_metadata.csv\n"
-            "```\n\n"
-            "**To fix this:**\n"
-            "1. Create a 'processed' folder in your Google Drive\n"
-            "2. Upload your sensor data following the structure above\n"
-            "3. Make sure the Google Drive folder is shared with your Service Account\n"
-            "4. Or uncheck '📁 Use Google Drive Data' to use local data for testing"
-        )
+        st.error("🔍 No OBS sensor folders found in Google Drive. Please check your folder structure and permissions.")
         st.stop()
     
     # Site selection
@@ -561,9 +503,6 @@ if selected_file:
                         file_name=f"{sensor_name}_{view_mode.lower()}_plots.zip",
                         mime="application/zip"
                     )
-
-        if USE_GOOGLE_DRIVE:
-            st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit and Plotly")
