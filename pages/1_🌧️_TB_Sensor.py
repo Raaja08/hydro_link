@@ -257,9 +257,22 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
     
-    # Find TB folders (processed/tb structure)
+    # Find TB folders (processed/tb structure or virtual structure)
     tb_folders = {}
-    if 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+    
+    # Handle both normal processed structure and virtual structure
+    if 'tb' in folder_structure:
+        if folder_structure['tb'].get('subfolders'):
+            # Virtual structure - folders are directly accessible
+            st.success("🎯 **Using virtual structure - TB folders found!**")
+            tb_folders = folder_structure['tb']['subfolders']
+        elif folder_structure['tb']['type'] == 'folder':
+            # Normal structure
+            tb_contents = drive_manager.get_folder_structure(folder_structure['tb']['id'])
+            tb_folders = {name: content for name, content in tb_contents.items() 
+                         if content['type'] == 'folder'}
+    elif 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+        # Legacy processed structure
         processed_contents = drive_manager.get_folder_structure(folder_structure['processed']['id'])
         if 'tb' in processed_contents and processed_contents['tb']['type'] == 'folder':
             tb_contents = drive_manager.get_folder_structure(processed_contents['tb']['id'])

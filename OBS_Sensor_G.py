@@ -253,6 +253,16 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
                 if 'atm_s1_2023.csv' in atm_site1_contents:
                     atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
     
+    # Handle virtual structure for atmos data
+    if not atmos_file_id and 'atmos' in folder_structure:
+        if folder_structure['atmos'].get('subfolders'):
+            # Virtual structure - check for atm_site1 directly
+            atm_folders = folder_structure['atmos']['subfolders']
+            if 'atm_site1' in atm_folders:
+                atm_site1_contents = drive_manager.get_folder_structure(atm_folders['atm_site1']['id'])
+                if 'atm_s1_2023.csv' in atm_site1_contents:
+                    atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
+    
     if not obs_folders:
         st.error(
             "🔍 **No OBS sensor folders found in Google Drive**\n\n"

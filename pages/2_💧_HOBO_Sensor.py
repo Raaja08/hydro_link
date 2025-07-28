@@ -177,11 +177,23 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
     
-    # Find HOBO folders (processed/hobo structure)
+    # Find HOBO folders (processed/hobo structure or virtual structure)
     hobo_folders = {}
     metadata_file_id = None
     
-    if 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+    # Handle both normal processed structure and virtual structure
+    if 'hobo' in folder_structure:
+        if folder_structure['hobo'].get('subfolders'):
+            # Virtual structure - folders are directly accessible
+            st.success("🎯 **Using virtual structure - HOBO folders found!**")
+            hobo_folders = folder_structure['hobo']['subfolders']
+        elif folder_structure['hobo']['type'] == 'folder':
+            # Normal structure
+            hobo_contents = drive_manager.get_folder_structure(folder_structure['hobo']['id'])
+            hobo_folders = {name: content for name, content in hobo_contents.items() 
+                           if content['type'] == 'folder'}
+    elif 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+        # Legacy processed structure
         processed_contents = drive_manager.get_folder_structure(folder_structure['processed']['id'])
         
         # Find HOBO folders
