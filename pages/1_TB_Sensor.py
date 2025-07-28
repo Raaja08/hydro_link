@@ -122,11 +122,27 @@ def load_logo_from_google_drive(gd_manager, logo_folder_id, logo_filename="logo_
 def get_summary_stats(df, view_mode, plot_df, agg_type=None):
     """
     Calculate comprehensive summary statistics for the given data.
-    Returns None if there's missing data, otherwise returns stats dict.
+    Returns None if there's missing data in the original period, otherwise returns stats dict.
     """
-    # Check if there are any missing values in the plot data
-    if plot_df['rainfall_mm'].isna().any():
-        return None
+    # Check if there are any missing values in the original data for the selected period
+    # Since plot_df now has NaN values removed, we need to check the original data
+    if view_mode == "Daily":
+        # For daily view, check if we have data for every expected interval
+        expected_intervals = 24 if agg_type != "15-min" else 96  # 24 hours or 96 15-min intervals
+        if len(plot_df) < expected_intervals:
+            return None
+    elif view_mode == "Monthly":
+        # For monthly view, check if we have data for most days (allow some missing days)
+        expected_days = pd.Timestamp(df.index.max()).days_in_month if not df.empty else 30
+        if len(plot_df) < expected_days * 0.8:  # Allow 20% missing days
+            return None
+    elif view_mode == "Yearly":
+        # For yearly view, check if we have data for most months
+        if len(plot_df) < 10:  # Require at least 10 months of data
+            return None
+    elif view_mode == "Custom":
+        # For custom view, be more lenient with missing data
+        pass
     
     stats = {}
     
@@ -351,29 +367,28 @@ if selected_file:
         # Determine aggregation based on date range
         date_diff = (end - start).days
         if date_diff <= 7:
-            # Create continuous hourly index and reindex with NaN for missing periods
-            full_range = pd.date_range(start=pd.Timestamp(start), end=pd.Timestamp(end) + pd.Timedelta(days=1), freq='H', inclusive='left')
-            # Only sum if we have actual non-NaN values
-            hourly_data = filtered_df.resample('H').agg({
+            # Only aggregate periods with actual data (skip missing values)
+            plot_df = filtered_df.resample('H').agg({
                 data_column: agg_func
             })
-            plot_df = hourly_data.reindex(full_range)
+            # Remove NaN values to show gaps instead of zeros
+            plot_df = plot_df.dropna()
             freq_text = "Hourly"
         elif date_diff <= 90:
-            # Create continuous daily index
-            full_range = pd.date_range(start=start, end=end, freq='D')
-            daily_data = filtered_df.resample('D').agg({
+            # Only aggregate periods with actual data (skip missing values)
+            plot_df = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
-            plot_df = daily_data.reindex(full_range)
+            # Remove NaN values to show gaps instead of zeros
+            plot_df = plot_df.dropna()
             freq_text = "Daily"
         else:
-            # Create continuous monthly index
-            full_range = pd.date_range(start=pd.Timestamp(start).replace(day=1), end=pd.Timestamp(end), freq='MS')
-            monthly_data = filtered_df.resample('MS').agg({
+            # Only aggregate periods with actual data (skip missing values)
+            plot_df = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
-            plot_df = monthly_data.reindex(full_range)
+            # Remove NaN values to show gaps instead of zeros
+            plot_df = plot_df.dropna()
             freq_text = "Monthly"
         
         time_title = f"{start.strftime('%b %d, %Y')} to {end.strftime('%b %d, %Y')} ({freq_text})"
@@ -420,34 +435,33 @@ if selected_file:
             agg = st.sidebar.radio("Aggregation:", ["15-min", "Hourly"])
             freq = "15min" if agg == "15-min" else "H"
             
-            full_range = pd.date_range(start=selected_bin, end=selected_bin + pd.Timedelta(days=1), freq=freq, inclusive='left')
-            hourly_data = filtered_df.resample(freq).agg({
+            # Only aggregate periods with actual data (skip missing values)
+            plot_df = filtered_df.resample(freq).agg({
                 data_column: agg_func
             })
-            plot_df = hourly_data.reindex(full_range)
+            # Remove NaN values to show gaps instead of zeros
+            plot_df = plot_df.dropna()
             
             # Create title
             interval_text = "15 min interval" if agg == "15-min" else "one hour interval"
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Daily: {selected_bin.strftime('%B %d, %Y')} - {interval_text})"
         elif view_mode == "Monthly":
-            # Create continuous daily index for the selected month
-            month_end = selected_bin + pd.offsets.MonthEnd(1)
-            full_range = pd.date_range(start=selected_bin, end=month_end, freq='D')
-            daily_data = filtered_df.resample('D').agg({
+            # Only aggregate periods with actual data (skip missing values)
+            plot_df = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
-            plot_df = daily_data.reindex(full_range)
+            # Remove NaN values to show gaps instead of zeros
+            plot_df = plot_df.dropna()
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Monthly: {selected_bin.strftime('%B %Y')})"
         else:  # Yearly
-            # Create continuous monthly index for the selected year
-            year_end = selected_bin.replace(month=12, day=31)
-            full_range = pd.date_range(start=selected_bin, end=year_end, freq='MS')
-            monthly_data = filtered_df.resample('MS').agg({
+            # Only aggregate periods with actual data (skip missing values)
+            plot_df = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
-            plot_df = monthly_data.reindex(full_range)
+            # Remove NaN values to show gaps instead of zeros
+            plot_df = plot_df.dropna()
             unit = "(mm)" if data_type == "Rainfall" else "(°C)"
             time_title = f"{data_type} {unit} (Yearly: {selected_bin.strftime('%Y')})"
 
@@ -461,8 +475,8 @@ if selected_file:
     else:
         # For rainfall, create cumulative; for temperature, don't
         if data_type == "Rainfall":
-            # Fill NaN values with 0 for cumulative calculation only (preserves NaN in original data)
-            plot_df['cumulative_rainfall'] = plot_df[data_column].fillna(0).cumsum()
+            # Calculate cumulative rainfall from available data only
+            plot_df['cumulative_rainfall'] = plot_df[data_column].cumsum()
             show_cumulative = True
         else:
             show_cumulative = False
@@ -477,25 +491,6 @@ if selected_file:
                 template="plotly_white",
                 color_discrete_sequence=["#1f77b4"]
             )
-            
-            # Add visual indicator for missing data (gray bars at bottom)
-            missing_mask = plot_df[data_column].isna()
-            if missing_mask.any():
-                # Get the maximum value for positioning the missing data indicator
-                max_val = plot_df[data_column].max()
-                if pd.isna(max_val):
-                    max_val = 1
-                indicator_height = max_val * 0.02  # 2% of max value
-                
-                # Add gray bars for missing data periods
-                fig.add_bar(
-                    x=plot_df.index[missing_mask],
-                    y=[indicator_height] * missing_mask.sum(),
-                    name="Missing Data",
-                    marker_color="lightgray",
-                    showlegend=True,
-                    hovertemplate="Missing Data<extra></extra>"
-                )
         else:
             # Line chart for temperature
             fig = px.line(
@@ -507,30 +502,6 @@ if selected_file:
             )
             # Add markers to the line
             fig.update_traces(mode='lines+markers')
-            
-            # Add visual indicator for missing data (gray dots at bottom)
-            missing_mask = plot_df[data_column].isna()
-            if missing_mask.any():
-                # Get the y-axis range for positioning the missing data indicator
-                min_val = plot_df[data_column].min()
-                max_val = plot_df[data_column].max()
-                if pd.isna(min_val) or pd.isna(max_val):
-                    y_range = 1
-                    indicator_y = 0
-                else:
-                    y_range = max_val - min_val
-                    indicator_y = min_val - (y_range * 0.05)  # 5% below minimum
-                
-                # Add gray markers for missing data periods
-                fig.add_scatter(
-                    x=plot_df.index[missing_mask],
-                    y=[indicator_y] * missing_mask.sum(),
-                    mode='markers',
-                    name="Missing Data",
-                    marker=dict(color="lightgray", size=8, symbol="square"),
-                    showlegend=True,
-                    hovertemplate="Missing Data<extra></extra>"
-                )
         
         # Calculate y-axis max (higher than highest value)
         max_data = plot_df[data_column].max()
