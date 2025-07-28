@@ -1,0 +1,39 @@
+[google_drive]
+type = "service_account"
+project_id = "hydro-link-dashboard"
+private_key_id = "7bc6a409a785ecef8152d42d756bde2216e718a2"
+private_key = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCknYTf7+Gav8T0
+7TOUCBog2xqqVDSvet/8zGDqpH1VnM3kVCR3eKefbsowcTD5epluNpJhpOkrcrSh
+iAnSIrbEgiGQkp68hcrZFfQzsO2DAlS8L2QRanWvpwgg4UXXXSQv+Ge/n7bwLkbR
+QzQwMrbBHghtgAV1FzuaxvczpgzBMACdIuM9fTtZ/ldBPZMJ/NOmGExIwYWqq7iX
+WwXG1jkcy7i4ruEYVEYT+UpauMDwxpJZlj29JnyM6HWfau23Dg3ZbBVH+TrzUH6Z
+s7THtP4EDUCmyJW+lpli7fvX992BNfx+L62ZC+lYzYU+S3nPdY/5PmhcOrU+XbgB
+M6TP9SQPAgMBAAECggEABBrMvua/iePL7fg3h91B2t2LxyvYBSN7uqp/+ina2YvS
+PdDJTf9WCALeYMyEa5wef6HgZDXqqIOGNIbss8Qw1CqTMASFQm8q9TR3xTgysUhu
+w3iCYXAgT3PLSe1EGBAsVak3MQ8y+RSLqIPT+nsGlT8sokpbGHsuqHfbSdA9/i0s
+JZmBDVWLIXn0PyuHeufM9BMDKcJCI3ByWiyEFoEOOcrJguc/M5++frXA69Wl4t5h
+dmTTGQym73Pf/9QEWcEPQEDlCGu9wVR/exVxv1KTIj4Pp6MeWMuov6jDgHPzmCIH
+wnLVn0YQISulH2gdkovSrVSsCecfghK5ofOlDrDDCQKBgQDcztgqBcK10jlooGGq
+IiYRZViP2UrSZgynFipzncPDQvZ6QdvGX6qugxM2BzYvgDSSGHXER91yTVdYvwqO
+KvJjDAG7eKkfb8b2+f55vIrQI30zbRd6g4h93eaMmISZRnu7JuoAHX27EJe9PVl2
+UBZmezEA6wFT29uqCMx2JrBH6QKBgQC+2fcSe+khw6Z65Kxkzbzu0JA7hK00w7UP
+Dr96NxiqF9Bkcv+T8KzPmnfMzKvxT1FUOwZJzXgJ8df0UsILqx0aNpYXSVszz2xD
+1O4YvyMBi+LpehzIbQ2awHOUV1JB1xoKVRB0yGRDwmj2IWNHQGMEchDYRjJzB6n4
+JDkSdoqJNwKBgAQUgmQMZTOs5cisJgHZzbBGmiNWVY6buiIgQ7qNML/b7egGbYQ1
+4laFL4axDWxFRzNn5k0xMsNY8INATHaiDoaMA0Auk5l0HE4WAoDHXh1IepjHrEZk
+RdJllkwEyXZ3mfO0XWCRKvCY9uTVTGDmS/Oq1RX6QbUF/AIhVX3dayZ5AoGABc0K
+PX2WsHgJ72JT+xxlybx9JdH6kcgBENwZ5dUW4tSmeOcl7ZE7L3Q6f/cYotUOW8kP
+f97G70ZykfKSA1jIIavXFA4ev4xmdgla01W78qgV1ZLonQ7zguimmrOsxGONXxMG
+1QXiRkz6c8DAC8JhQBlXebtofSaWe/xd37nKrDECgYEA1Rg4x3eKOkiQtpQhL3UT
+Q8Kts+hYW6hGB6SdhK9hM6xGuB0InCL07MJ8WFGvhpMNrA/ujqis0t+zeUB7u0Hb
+fztbNdjstTtYDDqcFisY/HaQIg1Bc+KaDeJIOnTXi9QLVjcrlhlnTKJcGpTSUhAh
+opT9+jYiC1VADXII4SDYSmc=
+-----END PRIVATE KEY-----"""
+client_email = "hydro-link-app-service@hydro-link-dashboard.iam.gserviceaccount.com"
+client_id = "100954300163883200104"
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/hydro-link-app-service%40hydro-link-dashboard.iam.gserviceaccount.com"
+universe_domain = "googleapis.com"
