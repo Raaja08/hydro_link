@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 import plotly.io as pio
 from scipy.stats import zscore
 from PIL import Image
@@ -25,6 +25,9 @@ except ImportError:
 # Toggle between local and Google Drive data sources
 USE_GOOGLE_DRIVE = st.sidebar.checkbox("📁 Use Google Drive Data", value=True, help="Check to load data from Google Drive instead of local storage")
 
+# Google Drive folder IDs
+LOGO_FOLDER_ID = "1IQcw6pn4x9VFIRkafzLbfChbRzfQPz7K"  # Logo assets folder
+
 # Sensor parameters
 AVAILABLE_PARAMS = {
     'ambient_light': 'Ambient Light',
@@ -35,13 +38,13 @@ AVAILABLE_PARAMS = {
 
 if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     # Google Drive configuration
-    LOGO_PATH = "/Volumes/AMBITION/S4W/hydro_link/assets/logo_1.png"  # Keep logo local for now
+    LOGO_PATH = "assets/logo_1.png"  # Relative path for deployment
 else:
     # Local configuration
     OBS_BASE_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/obs"
     ATMOS_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/atmos/atm_site1/atm_s1_2023.csv"
     SENSOR_METADATA_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/sensor_metadata/sensor_metadata.csv"
-    LOGO_PATH = "/Volumes/AMBITION/S4W/hydro_link/assets/logo_1.png"
+    LOGO_PATH = "assets/logo_1.png"  # Relative path for deployment
 
 st.set_page_config(page_title="OBS Sensor Data Viewer - Google Drive", layout="wide")
 
@@ -121,25 +124,59 @@ def load_atmos():
     return df
 
 def encode_img_to_base64(image_path):
-    with open(image_path, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+    try:
+        with open(image_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        # Return empty string if logo not found
+        return ""
+
+def load_logo_from_google_drive(gd_manager, logo_folder_id, logo_filename="logo_1.png"):
+    """Load logo from Google Drive using folder ID"""
+    try:
+        return gd_manager.load_logo_from_drive(logo_folder_id, logo_filename)
+    except Exception as e:
+        st.warning(f"⚠️ Could not load logo from Google Drive: {e}")
+        return ""
 
 # ---------------------------
 # LOGO HEADER
 # ---------------------------
-logo_base64 = encode_img_to_base64(LOGO_PATH)
-st.markdown(f"""
-    <div style='display: flex; justify-content: space-between; align-items: center; padding: 20px 10px 10px 10px;'>
-        <div>
+logo_base64 = ""
+
+# Try to load logo from Google Drive first, then fallback to local
+if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
+    try:
+        drive_manager = get_drive_manager()
+        if drive_manager.authenticate():
+            logo_base64 = load_logo_from_google_drive(drive_manager, LOGO_FOLDER_ID)
+    except Exception as e:
+        st.warning(f"⚠️ Could not load logo from Google Drive: {e}")
+
+# Fallback to local logo if Google Drive fails
+if not logo_base64:
+    logo_base64 = encode_img_to_base64(LOGO_PATH)
+
+if logo_base64:
+    st.markdown(f"""
+        <div style='display: flex; justify-content: space-between; align-items: center; padding: 20px 10px 10px 10px;'>
+            <div>
+                <h1 style='margin-bottom: 0;'>📊 S4W Sensor Dashboard (Google Drive)</h1>
+                <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
+            </div>
+            <div>
+                <img src='data:image/png;base64,{logo_base64}' style='height:100px;'/>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <div style='padding: 20px 10px 10px 10px;'>
             <h1 style='margin-bottom: 0;'>📊 S4W Sensor Dashboard (Google Drive)</h1>
             <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
         </div>
-        <div>
-            <img src='data:image/png;base64,{logo_base64}' style='height:100px;'/>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # ---------------------------
 # FILE SELECTION

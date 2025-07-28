@@ -83,6 +83,28 @@ class GoogleDriveManager:
         except HttpError as e:
             st.error(f"❌ Error downloading file from Google Drive: {e}")
             return None
+    
+    def download_image_file(self, file_id):
+        """Download an image file from Google Drive and return as bytes"""
+        if not self.service:
+            return None
+            
+        try:
+            # Download file content
+            request = self.service.files().get_media(fileId=file_id)
+            file_content = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_content, request)
+            
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk()
+                
+            file_content.seek(0)
+            return file_content.read()
+            
+        except HttpError as e:
+            st.error(f"❌ Error downloading image from Google Drive: {e}")
+            return None
         except Exception as e:
             st.error(f"❌ Error processing file: {e}")
             return None
@@ -105,6 +127,29 @@ class GoogleDriveManager:
             
         except Exception as e:
             st.error(f"❌ Error finding folder '{folder_name}': {e}")
+            return None
+    
+    def find_file_by_name(self, file_name, folder_id=None):
+        """Find a file by name, optionally in a specific folder"""
+        if not self.service:
+            return None
+            
+        try:
+            query = f"name='{file_name}' and trashed=false"
+            if folder_id:
+                query += f" and '{folder_id}' in parents"
+            
+            results = self.service.files().list(
+                q=query,
+                fields="files(id, name)",
+                pageSize=10
+            ).execute()
+            
+            files = results.get('files', [])
+            return files[0]['id'] if files else None
+            
+        except Exception as e:
+            st.error(f"❌ Error finding file '{file_name}': {e}")
             return None
     
     def get_folder_structure(self, folder_id=None):
@@ -135,6 +180,31 @@ class GoogleDriveManager:
                 }
         
         return structure
+    
+    def load_logo_from_drive(self, folder_id, logo_filename="logo_1.png"):
+        """Load logo from Google Drive folder and return as base64 string"""
+        if not self.service:
+            return ""
+            
+        try:
+            # Find the logo file in the specified folder
+            file_id = self.find_file_by_name(logo_filename, folder_id)
+            if not file_id:
+                st.warning(f"⚠️ Logo file '{logo_filename}' not found in Google Drive folder")
+                return ""
+            
+            # Download the image file
+            image_bytes = self.download_image_file(file_id)
+            if not image_bytes:
+                return ""
+            
+            # Convert to base64
+            import base64
+            return base64.b64encode(image_bytes).decode()
+            
+        except Exception as e:
+            st.error(f"❌ Error loading logo from Google Drive: {e}")
+            return ""
 
 # Singleton instance
 @st.cache_resource
