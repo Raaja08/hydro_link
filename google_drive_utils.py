@@ -47,9 +47,29 @@ class GoogleDriveManager:
     
     def get_service_account_email(self):
         """Get the service account email for display purposes"""
-        if hasattr(self, '_service_account_email'):
-            return self._service_account_email
-        return "Not available"
+        try:
+            if hasattr(self, '_service_account_email'):
+                return self._service_account_email
+            
+            # Try to get from secrets if available
+            if hasattr(st, 'secrets') and 'google_drive' in st.secrets:
+                creds_dict = dict(st.secrets["google_drive"])
+                if 'client_email' in creds_dict:
+                    return creds_dict['client_email']
+            elif hasattr(st, 'secrets') and 'service_account' in st.secrets:
+                creds_dict = dict(st.secrets["service_account"])
+                if 'client_email' in creds_dict:
+                    return creds_dict['client_email']
+            elif os.path.exists('service_account.json'):
+                with open('service_account.json', 'r') as f:
+                    creds_dict = json.load(f)
+                    if 'client_email' in creds_dict:
+                        return creds_dict['client_email']
+            
+            return "Not available"
+            
+        except Exception as e:
+            return "Not available"
     
     def list_files_in_folder(self, folder_id):
         """List all files in a specific Google Drive folder"""

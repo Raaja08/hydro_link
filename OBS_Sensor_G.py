@@ -193,12 +193,13 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.error("❌ Failed to connect to Google Drive")
             st.stop()
         
-        # Display Service Account info
+        # Display Service Account info (only after successful authentication)
         service_email = drive_manager.get_service_account_email()
-        st.info(
-            f"🔑 **Service Account Email:** `{service_email}`\n\n"
-            f"📁 **To access Google Drive data:** Share your 'processed' folder with this email address"
-        )
+        if service_email != "Not available":
+            st.info(
+                f"🔑 **Service Account Email:** `{service_email}`\n\n"
+                f"📁 **To access Google Drive data:** Share your 'processed' folder with this email address"
+            )
         
         # Test basic access
         success, message = drive_manager.test_drive_access()
