@@ -209,7 +209,7 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     # Get folder structure
     with st.spinner("Loading Google Drive folder structure..."):
         folder_structure = drive_manager.get_folder_structure()
-    # Find OBS folders (processed/obs structure or virtual structure)
+    # Clear cache to force fresh deployment
     obs_folders = {}
     metadata_file_id = None
     atmos_file_id = None
