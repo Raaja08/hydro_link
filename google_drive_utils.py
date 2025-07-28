@@ -407,7 +407,7 @@ class GoogleDriveManager:
             st.warning(f"⚠️ Error loading logo from GitHub: {e}")
             return ""
 
-# Singleton instance - cleaned debugging output
+# Singleton instance - cleaned debugging output v2
 @st.cache_resource
 def get_drive_manager():
     return GoogleDriveManager()
