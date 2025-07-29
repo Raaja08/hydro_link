@@ -6,7 +6,6 @@ import pandas as pd
 import plotly.express as px
 import os
 from datetime import date, timedelta
-from scipy.stats import zscore
 import base64
 
 # Import Google Drive utilities
@@ -25,6 +24,11 @@ except Exception as e:
 # ---------------------------
 # CONFIGURATION
 # ---------------------------
+# Clear cache button in sidebar
+if st.sidebar.button("🗑️ Clear Cache"):
+    st.cache_data.clear()
+    st.rerun()
+
 # Toggle between local and Google Drive data sources
 USE_GOOGLE_DRIVE = st.sidebar.checkbox("📁 Use Google Drive Data", value=True, help="Check to load data from Google Drive instead of local storage")
 
