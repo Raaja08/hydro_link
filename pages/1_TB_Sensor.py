@@ -40,7 +40,7 @@ st.set_page_config(page_title="TB Sensor", layout="wide")
 # ---------------------------
 # UTILITY FUNCTIONS
 # ---------------------------
-@st.cache_data
+# @st.cache_data  # Temporarily disabled to force refresh
 def load_csv_from_drive(file_id):
     """Load CSV from Google Drive"""
     if not GOOGLE_DRIVE_ENABLED:
@@ -67,7 +67,7 @@ def load_csv_from_drive(file_id):
     
     return df
 
-@st.cache_data
+# @st.cache_data  # Temporarily disabled to force refresh
 def load_csv(file_path):
     df = pd.read_csv(file_path)
     # Specify format for TB data timestamps (YYYY-MM-DD HH:MM:SS)

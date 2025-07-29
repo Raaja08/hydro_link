@@ -1,5 +1,6 @@
 # OBS Sensor - Google Drive Version
 # Updated: 2025-07-28 21:26 - Fixed datetime parsing issues
+# Version: 2.1 - Force Streamlit Cloud refresh
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -54,10 +55,16 @@ else:
 
 st.set_page_config(page_title="OBS Sensor", layout="wide")
 
+# Force clear all cached data to ensure fresh deployment
+try:
+    st.cache_data.clear()
+except:
+    pass  # Ignore if no cache to clear
+
 # ---------------------------
 # UTILITY FUNCTIONS
 # ---------------------------
-@st.cache_data
+# @st.cache_data  # Temporarily disabled to force refresh
 def load_csv_from_drive(file_id):
     """Load CSV from Google Drive"""
     if not GOOGLE_DRIVE_ENABLED:
@@ -77,7 +84,7 @@ def load_csv_from_drive(file_id):
     
     return df
 
-@st.cache_data
+# @st.cache_data  # Temporarily disabled to force refresh
 def load_csv(file_path):
     df = pd.read_csv(file_path)
     # Specify format for OBS data timestamps (YYYY-MM-DD HH:MM:SS)
@@ -103,7 +110,7 @@ def load_metadata_from_drive(file_id):
 def load_metadata():
     return pd.read_csv(SENSOR_METADATA_PATH)
 
-@st.cache_data
+# @st.cache_data  # Temporarily disabled to force refresh
 def load_atmos_from_drive(file_id):
     """Load atmospheric data from Google Drive"""
     if not GOOGLE_DRIVE_ENABLED:
@@ -123,7 +130,7 @@ def load_atmos_from_drive(file_id):
     
     return df
 
-@st.cache_data
+# @st.cache_data  # Temporarily disabled to force refresh
 def load_atmos():
     df = pd.read_csv(ATMOS_PATH)
     # Specify format for atmospheric data timestamps (M/D/YY H:MM)
