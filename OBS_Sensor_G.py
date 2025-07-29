@@ -49,6 +49,19 @@ if st.sidebar.button("🗑️ Clear Cache"):
 # Always use Google Drive for data sources
 USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
 
+# Emergency fallback mode
+if 'emergency_mode' not in st.session_state:
+    st.session_state.emergency_mode = False
+
+if st.session_state.emergency_mode:
+    USE_GOOGLE_DRIVE = False
+    st.warning("⚠️ **Emergency Mode Active**: Google Drive disabled due to critical errors. Using local fallback.")
+    if st.sidebar.button("🔄 Reset to Google Drive"):
+        st.session_state.emergency_mode = False
+        st.cache_data.clear()
+        gc.collect()
+        st.rerun()
+
 # Google Drive folder IDs
 LOGO_FOLDER_ID = "1IQcw6pn4x9VFIRkafzLbfChbRzfQPz7K"  # Logo assets folder
 
@@ -227,110 +240,148 @@ else:
 # FILE SELECTION
 # ---------------------------
 if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
-    # Google Drive file selection
+    # Google Drive file selection with enhanced error handling
     
-    drive_manager = get_drive_manager()
-    
-    # Authenticate and test connection
-    with st.spinner("Connecting to Google Drive..."):
-        if not drive_manager.authenticate():
-            st.error("❌ Failed to connect to Google Drive")
-            st.stop()
+    try:
+        drive_manager = get_drive_manager()
         
-        # Test basic access
-        success, message = drive_manager.test_drive_access()
-        if success:
-            st.sidebar.success("🔗 Google Drive: Connected")
-        else:
-            st.error(f"🔗 **Google Drive Connection Failed**: {message}")
-            st.stop()
+        # Authenticate and test connection
+        with st.spinner("Connecting to Google Drive..."):
+            if not drive_manager.authenticate():
+                st.error("❌ Failed to connect to Google Drive")
+                st.stop()
+            
+            # Test basic access
+            success, message = drive_manager.test_drive_access()
+            if success:
+                st.sidebar.success("🔗 Google Drive: Connected")
+            else:
+                st.error(f"🔗 **Google Drive Connection Failed**: {message}")
+                st.stop()
+    except Exception as e:
+        st.error(f"🚨 **Critical Error During Google Drive Setup**: {e}")
+        st.info("💡 **Activating Emergency Mode**: Switching to local fallback")
+        st.session_state.emergency_mode = True
+        st.rerun()
     
     # Get folder structure (clear cache)
-    with st.spinner("Loading Google Drive folder structure..."):
-        folder_structure = drive_manager.get_folder_structure()
-    
-    # Clear any cached debugging output
-    st.empty()
+    try:
+        with st.spinner("Loading Google Drive folder structure..."):
+            folder_structure = drive_manager.get_folder_structure()
+        
+        # Clear any cached debugging output
+        st.empty()
+        
+    except Exception as e:
+        st.error(f"🚨 **Error Loading Folder Structure**: {e}")
+        st.info("💡 **Activating Emergency Mode**: Switching to local fallback")
+        st.session_state.emergency_mode = True
+        st.rerun()
     
     # Clear cache to force fresh deployment
     obs_folders = {}
     metadata_file_id = None
     atmos_file_id = None
     
-    # Handle both normal processed structure and virtual structure
-    if 'obs' in folder_structure:
-        if folder_structure['obs'].get('subfolders'):
-            # Virtual structure - folders are directly accessible
-            obs_folders = folder_structure['obs']['subfolders']
-        elif folder_structure['obs']['type'] == 'folder':
-            # Normal structure
-            obs_contents = drive_manager.get_folder_structure(folder_structure['obs']['id'])
-            obs_folders = {name: content for name, content in obs_contents.items() 
-                          if content['type'] == 'folder'}
-    elif 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
-        # Legacy processed structure
-        processed_contents = drive_manager.get_folder_structure(folder_structure['processed']['id'])
-        
-        # Find OBS folders
-        if 'obs' in processed_contents and processed_contents['obs']['type'] == 'folder':
-            obs_contents = drive_manager.get_folder_structure(processed_contents['obs']['id'])
-            obs_folders = {name: content for name, content in obs_contents.items() 
-                          if content['type'] == 'folder'}
-        
-        # Find metadata file
-        if 'sensor_metadata' in processed_contents and processed_contents['sensor_metadata']['type'] == 'folder':
-            metadata_contents = drive_manager.get_folder_structure(processed_contents['sensor_metadata']['id'])
-            if 'sensor_metadata.csv' in metadata_contents:
-                metadata_file_id = metadata_contents['sensor_metadata.csv']['id']
-        
-        # Find atmospheric data file
-        if 'atmos' in processed_contents and processed_contents['atmos']['type'] == 'folder':
-            atmos_contents = drive_manager.get_folder_structure(processed_contents['atmos']['id'])
-            if 'atm_site1' in atmos_contents and atmos_contents['atm_site1']['type'] == 'folder':
-                atm_site1_contents = drive_manager.get_folder_structure(atmos_contents['atm_site1']['id'])
-                if 'atm_s1_2023.csv' in atm_site1_contents:
-                    atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
-    
-    # Handle virtual structure for atmos data
-    if not atmos_file_id and 'atmos' in folder_structure:
-        if folder_structure['atmos'].get('subfolders'):
-            # Virtual structure - check for atm_site1 directly
-            atm_folders = folder_structure['atmos']['subfolders']
-            if 'atm_site1' in atm_folders:
-                atm_site1_contents = drive_manager.get_folder_structure(atm_folders['atm_site1']['id'])
-                if 'atm_s1_2023.csv' in atm_site1_contents:
-                    atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
-        else:
-            # Try direct folder access as fallback
-            try:
-                atmos_direct = drive_manager.get_folder_structure(folder_structure['atmos']['id'])
-                if 'atm_site1' in atmos_direct:
-                    atm_site1_contents = drive_manager.get_folder_structure(atmos_direct['atm_site1']['id'])
+    try:
+        # Handle both normal processed structure and virtual structure
+        if 'obs' in folder_structure:
+            if folder_structure['obs'].get('subfolders'):
+                # Virtual structure - folders are directly accessible
+                obs_folders = folder_structure['obs']['subfolders']
+            elif folder_structure['obs']['type'] == 'folder':
+                # Normal structure
+                obs_contents = drive_manager.get_folder_structure(folder_structure['obs']['id'])
+                obs_folders = {name: content for name, content in obs_contents.items() 
+                              if content['type'] == 'folder'}
+        elif 'processed' in folder_structure and folder_structure['processed']['type'] == 'folder':
+            # Legacy processed structure
+            processed_contents = drive_manager.get_folder_structure(folder_structure['processed']['id'])
+            
+            # Find OBS folders
+            if 'obs' in processed_contents and processed_contents['obs']['type'] == 'folder':
+                obs_contents = drive_manager.get_folder_structure(processed_contents['obs']['id'])
+                obs_folders = {name: content for name, content in obs_contents.items() 
+                              if content['type'] == 'folder'}
+            
+            # Find metadata file
+            if 'sensor_metadata' in processed_contents and processed_contents['sensor_metadata']['type'] == 'folder':
+                metadata_contents = drive_manager.get_folder_structure(processed_contents['sensor_metadata']['id'])
+                if 'sensor_metadata.csv' in metadata_contents:
+                    metadata_file_id = metadata_contents['sensor_metadata.csv']['id']
+            
+            # Find atmospheric data file
+            if 'atmos' in processed_contents and processed_contents['atmos']['type'] == 'folder':
+                atmos_contents = drive_manager.get_folder_structure(processed_contents['atmos']['id'])
+                if 'atm_site1' in atmos_contents and atmos_contents['atm_site1']['type'] == 'folder':
+                    atm_site1_contents = drive_manager.get_folder_structure(atmos_contents['atm_site1']['id'])
                     if 'atm_s1_2023.csv' in atm_site1_contents:
                         atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
-            except Exception:
-                pass  # Silently handle access errors
+        
+        # Handle virtual structure for atmos data
+        if not atmos_file_id and 'atmos' in folder_structure:
+            if folder_structure['atmos'].get('subfolders'):
+                # Virtual structure - check for atm_site1 directly
+                atm_folders = folder_structure['atmos']['subfolders']
+                if 'atm_site1' in atm_folders:
+                    atm_site1_contents = drive_manager.get_folder_structure(atm_folders['atm_site1']['id'])
+                    if 'atm_s1_2023.csv' in atm_site1_contents:
+                        atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
+            else:
+                # Try direct folder access as fallback
+                try:
+                    atmos_direct = drive_manager.get_folder_structure(folder_structure['atmos']['id'])
+                    if 'atm_site1' in atmos_direct:
+                        atm_site1_contents = drive_manager.get_folder_structure(atmos_direct['atm_site1']['id'])
+                        if 'atm_s1_2023.csv' in atm_site1_contents:
+                            atmos_file_id = atm_site1_contents['atm_s1_2023.csv']['id']
+                except Exception:
+                    pass  # Silently handle access errors
+        
+    except Exception as e:
+        st.error(f"🚨 **Error Processing Folder Structure**: {e}")
+        st.info("💡 **Activating Emergency Mode**: Switching to local fallback")
+        st.session_state.emergency_mode = True
+        st.rerun()
     
     if not obs_folders:
         st.error("🔍 No OBS sensor folders found in Google Drive. Please check your folder structure and permissions.")
         st.stop()
     
-    # Site selection
-    sites = list(obs_folders.keys())
-    selected_site = st.sidebar.selectbox("🌍 Select Site", sites)
-    
-    # Get CSV files in selected site
-    site_contents = drive_manager.get_folder_structure(obs_folders[selected_site]['id'])
-    csv_files = {name: content for name, content in site_contents.items() 
-                if content['type'] == 'file' and name.endswith('.csv')}
-    
-    if not csv_files:
-        st.error(f"No CSV files found in {selected_site}")
-        st.stop()
-    
-    csv_file_names = list(csv_files.keys())
-    selected_file = st.sidebar.selectbox("📂 Select a sensor data file", csv_file_names)
-    selected_file_id = csv_files[selected_file]['id']
+    # Site selection with error handling
+    try:
+        sites = list(obs_folders.keys())
+        
+        # Clear cache when site changes
+        if 'previous_site' not in st.session_state:
+            st.session_state.previous_site = None
+        
+        selected_site = st.sidebar.selectbox("🌍 Select Site", sites)
+        
+        # If site changed, force cache clear
+        if st.session_state.previous_site != selected_site:
+            st.cache_data.clear()
+            gc.collect()
+            st.session_state.previous_site = selected_site
+        
+        # Get CSV files in selected site
+        site_contents = drive_manager.get_folder_structure(obs_folders[selected_site]['id'])
+        csv_files = {name: content for name, content in site_contents.items() 
+                    if content['type'] == 'file' and name.endswith('.csv')}
+        
+        if not csv_files:
+            st.error(f"No CSV files found in {selected_site}")
+            st.stop()
+        
+        csv_file_names = list(csv_files.keys())
+        selected_file = st.sidebar.selectbox("📂 Select a sensor data file", csv_file_names)
+        selected_file_id = csv_files[selected_file]['id']
+        
+    except Exception as e:
+        st.error(f"🚨 **Error During Site/File Selection**: {e}")
+        st.info("💡 **Activating Emergency Mode**: Switching to local fallback")
+        st.session_state.emergency_mode = True
+        st.rerun()
     
 else:
     # Local file selection (fallback)
