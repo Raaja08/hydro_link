@@ -332,11 +332,12 @@ if selected_file:
     
     sensor_id = selected_file.replace(".csv", "")
 
-    st.sidebar.markdown("### 🗓️ Time Range")
-    
-    # Data type selector
+    # Parameters section (to match OBS and HOBO pattern)
+    st.sidebar.markdown("### � Parameters")
     data_type = st.sidebar.radio("📊 Data Type:", ["Rainfall", "Temperature"])
     
+    # Time Range section
+    st.sidebar.markdown("### 🗓️ Time Range")
     view_mode = st.sidebar.radio("View by:", ["Daily", "Monthly", "Yearly", "Custom"])
 
     min_date = df.index.min()
