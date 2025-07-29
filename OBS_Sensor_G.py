@@ -296,11 +296,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
         with st.spinner("🔍 Scanning Google Drive for current sites (fresh check)..."):
             # Force a completely fresh folder structure check
             folder_structure = drive_manager.get_folder_structure()
-            
-            # Add timestamp to verify fresh data
-            import time
-            current_time = time.time()
-            st.sidebar.caption(f"📊 Last scan: {time.strftime('%H:%M:%S', time.localtime(current_time))}")
         
         # Clear any cached debugging output
         st.empty()
@@ -390,9 +385,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.info("💡 If you recently deleted sites, try clearing the cache.")
             st.stop()
         
-        # Show number of sites found
-        st.sidebar.caption(f"📍 Found {len(sites)} site(s)")
-        
         # Clear cache when site changes
         if 'previous_site' not in st.session_state:
             st.session_state.previous_site = None
@@ -411,7 +403,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.cache_data.clear()
             gc.collect()
             st.session_state.previous_site = selected_site
-            st.sidebar.success(f"✅ Switched to {selected_site}")
         
         # Validate site still exists before accessing
         if selected_site not in obs_folders:
@@ -435,7 +426,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.stop()
         
         csv_file_names = list(csv_files.keys())
-        st.sidebar.caption(f"📄 Found {len(csv_file_names)} file(s)")
         
         selected_file = st.sidebar.selectbox("📂 Select a sensor data file", csv_file_names)
         selected_file_id = csv_files[selected_file]['id']
