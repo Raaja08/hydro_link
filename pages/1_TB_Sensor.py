@@ -174,7 +174,8 @@ def get_summary_stats(df, view_mode, plot_df, agg_type=None):
             # Wettest month
             if plot_df['rainfall_mm'].max() > 0:
                 wettest = plot_df['rainfall_mm'].idxmax()
-                stats["Wettest month"] = f"{wettest.strftime('%B')} ({round(plot_df['rainfall_mm'].max(), 2)} mm)"
+                wettest_value = round(plot_df['rainfall_mm'].max(), 2)
+                stats["Wettest month"] = f"{wettest.strftime('%B')} ({wettest_value} mm)"
             else:
                 stats["Wettest month"] = "N/A"
                 
@@ -360,7 +361,7 @@ if selected_file:
         date_diff = (end - start).days
         if date_diff <= 7:
             # Create continuous hourly index and reindex with NaN for missing periods
-            full_range = pd.date_range(start=pd.Timestamp(start), end=pd.Timestamp(end) + pd.Timedelta(days=1), freq='H', inclusive='left')
+            full_range = pd.date_range(start=pd.Timestamp(start), end=pd.Timestamp(end) + pd.Timedelta(days=1), freq='h', inclusive='left')
             hourly_data = filtered_df.resample('H').agg({
                 data_column: agg_func
             })
@@ -425,7 +426,7 @@ if selected_file:
         if view_mode == "Daily":
             # Create continuous time index for the selected day
             agg = st.sidebar.radio("Aggregation:", ["15-min", "Hourly"])
-            freq = "15min" if agg == "15-min" else "H"
+            freq = "15min" if agg == "15-min" else "h"
             
             # Create full continuous range for the selected day
             start_time = selected_bin
@@ -644,7 +645,10 @@ if selected_file:
                 st.warning("⚠️ Data is incomplete for this period. Summary statistics are not available.")
             else:
                 st.markdown("### 📊 Summary Statistics")
-                st.table(pd.DataFrame(stats, index=["Value"]).T)
+                # Create DataFrame with explicit string dtype to avoid Arrow issues
+                stats_df = pd.DataFrame(stats, index=["Value"]).T
+                stats_df = stats_df.astype(str)  # Ensure all values are strings
+                st.dataframe(stats_df, use_container_width=True)
 
         # ---------------------------
         # DOWNLOAD OPTIONS
