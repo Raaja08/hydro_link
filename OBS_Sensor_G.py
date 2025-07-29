@@ -31,6 +31,15 @@ try:
     if hasattr(st.cache_resource, 'clear'):
         st.cache_resource.clear()
     gc.collect()  # Force garbage collection
+    
+    # Clear session state related to sites and files
+    if 'previous_site' in st.session_state:
+        del st.session_state.previous_site
+    if 'cached_sites' in st.session_state:
+        del st.session_state.cached_sites
+    if 'last_folder_check' in st.session_state:
+        del st.session_state.last_folder_check
+        
 except Exception as e:
     pass  # Silently handle any cache clearing errors
 
@@ -41,6 +50,12 @@ if st.sidebar.button("🗑️ Clear Cache"):
         if hasattr(st.cache_resource, 'clear'):
             st.cache_resource.clear()
         gc.collect()
+        
+        # Clear all session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+            
+        st.success("🧹 All caches and session state cleared!")
         st.rerun()
     except Exception as e:
         st.error(f"Cache clearing failed: {e}")
@@ -60,6 +75,18 @@ if st.session_state.emergency_mode:
         st.session_state.emergency_mode = False
         st.cache_data.clear()
         gc.collect()
+        st.rerun()
+
+# Add refresh sites button
+if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED and not st.session_state.emergency_mode:
+    if st.sidebar.button("🔄 Refresh Sites List"):
+        st.cache_data.clear()
+        gc.collect()
+        # Clear session state related to sites
+        for key in ['previous_site', 'cached_sites', 'last_folder_check']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.sidebar.success("✅ Sites list refreshed!")
         st.rerun()
 
 # Google Drive folder IDs
@@ -264,10 +291,16 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
         st.session_state.emergency_mode = True
         st.rerun()
     
-    # Get folder structure (clear cache)
+    # Get folder structure (force fresh check - no cache)
     try:
-        with st.spinner("Loading Google Drive folder structure..."):
+        with st.spinner("🔍 Scanning Google Drive for current sites (fresh check)..."):
+            # Force a completely fresh folder structure check
             folder_structure = drive_manager.get_folder_structure()
+            
+            # Add timestamp to verify fresh data
+            import time
+            current_time = time.time()
+            st.sidebar.caption(f"📊 Last scan: {time.strftime('%H:%M:%S', time.localtime(current_time))}")
         
         # Clear any cached debugging output
         st.empty()
@@ -348,12 +381,27 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
         st.error("🔍 No OBS sensor folders found in Google Drive. Please check your folder structure and permissions.")
         st.stop()
     
-    # Site selection with error handling
+    # Site selection with error handling and deleted site validation
     try:
         sites = list(obs_folders.keys())
         
+        if not sites:
+            st.error("🔍 No sites found in Google Drive. Please check if you have any OBS sensor folders.")
+            st.info("💡 If you recently deleted sites, try clearing the cache.")
+            st.stop()
+        
+        # Show number of sites found
+        st.sidebar.caption(f"📍 Found {len(sites)} site(s)")
+        
         # Clear cache when site changes
         if 'previous_site' not in st.session_state:
+            st.session_state.previous_site = None
+        
+        # Validate that the previously selected site still exists
+        if st.session_state.previous_site and st.session_state.previous_site not in sites:
+            st.sidebar.warning(f"⚠️ Previously selected site '{st.session_state.previous_site}' no longer exists")
+            st.cache_data.clear()
+            gc.collect()
             st.session_state.previous_site = None
         
         selected_site = st.sidebar.selectbox("🌍 Select Site", sites)
@@ -363,17 +411,32 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             st.cache_data.clear()
             gc.collect()
             st.session_state.previous_site = selected_site
+            st.sidebar.success(f"✅ Switched to {selected_site}")
         
-        # Get CSV files in selected site
-        site_contents = drive_manager.get_folder_structure(obs_folders[selected_site]['id'])
-        csv_files = {name: content for name, content in site_contents.items() 
-                    if content['type'] == 'file' and name.endswith('.csv')}
+        # Validate site still exists before accessing
+        if selected_site not in obs_folders:
+            st.error(f"🚨 Site '{selected_site}' no longer exists in Google Drive")
+            st.info("💡 Try clearing cache or refresh the page")
+            st.stop()
+        
+        # Get CSV files in selected site with validation
+        try:
+            site_contents = drive_manager.get_folder_structure(obs_folders[selected_site]['id'])
+            csv_files = {name: content for name, content in site_contents.items() 
+                        if content['type'] == 'file' and name.endswith('.csv')}
+        except Exception as site_error:
+            st.error(f"🚨 Cannot access site '{selected_site}': {site_error}")
+            st.info("💡 This site may have been deleted. Try clearing cache and selecting a different site.")
+            st.stop()
         
         if not csv_files:
-            st.error(f"No CSV files found in {selected_site}")
+            st.error(f"📁 No CSV files found in '{selected_site}'")
+            st.info("💡 This site may be empty or files may have been deleted.")
             st.stop()
         
         csv_file_names = list(csv_files.keys())
+        st.sidebar.caption(f"📄 Found {len(csv_file_names)} file(s)")
+        
         selected_file = st.sidebar.selectbox("📂 Select a sensor data file", csv_file_names)
         selected_file_id = csv_files[selected_file]['id']
         
