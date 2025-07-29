@@ -3,13 +3,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-import gc
 from datetime import datetime, timedelta
-import plotly.io as pio
 from PIL import Image
 import base64
-import tempfile
-import zipfile
 
 # Import Google Drive utilities
 try:
@@ -330,123 +326,26 @@ if selected_file:
                 labels={"value": param_display[param]},
                 template="plotly_white"
             )
-            fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button(f"🖼️ Download {param_display[param]} PNG", key=f"png_{param}"):
-                    filename = f"{sensor_id}_{view_mode}_{param}.png"
-                    
-                    # Use kaleido only (future-proof)
-                    try:
-                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                            # Reduced scale to prevent memory issues
-                            pio.write_image(fig, tmp_file.name, format="png", scale=1.5, width=800, height=400)
-                            with open(tmp_file.name, "rb") as f:
-                                file_data = f.read()
-                            os.unlink(tmp_file.name)
-                            gc.collect()
-                            st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
-                            st.success("✅ PNG downloaded!")
-                    except Exception:
-                        st.error("PNG download failed. Try HTML option or manual methods.")
-                        gc.collect()
-            
-            with col2:
-                if st.button(f"📄 Download {param_display[param]} HTML", key=f"html_{param}"):
-                    html_filename = f"{sensor_id}_{view_mode}_{param}.html"
-                    try:
-                        html_string = fig.to_html(include_plotlyjs='cdn')
-                        st.download_button(
-                            "📄 Download HTML", 
-                            html_string.encode(), 
-                            file_name=html_filename, 
-                            mime="text/html"
-                        )
-                        st.success("✅ HTML downloaded!")
-                        st.info("💡 Open in browser, then screenshot or save as PNG.")
-                    except Exception:
-                        st.error("HTML download failed. Use right-click → 'Save image as...' on the plot.")
+            # HTML Download only (eliminates PNG memory issues)
+            html_filename = f"{sensor_id}_{view_mode}_{param}.html"
+            try:
+                html_string = fig.to_html(include_plotlyjs='cdn')
+                st.download_button(
+                    f"📄 Download {param_display[param]} as HTML",
+                    html_string.encode(), 
+                    file_name=html_filename, 
+                    mime="text/html",
+                    key=f"html_{param}",
+                    help="Download as HTML file. Open in browser to view interactively or save as PNG."
+                )
+                st.info("💡 **How to get PNG:** Open the downloaded HTML file in your browser, then right-click the plot and select 'Save image as...' to save as PNG.")
+            except Exception as e:
+                st.error(f"Download failed: {str(e)}")
+                st.info("💡 **Alternative:** Right-click the plot above and select 'Save image as...' for direct PNG download.")
 
-        # Batch download function
-        def get_time_bins(view_mode_local):
-            if view_mode_local == "Daily":
-                bins_local = df.resample('D').mean().index
-                delta_local = timedelta(days=1)
-                fmt_local = "%Y-%m-%d"
-                label_prefix = "Day"
-            elif view_mode_local == "Weekly":
-                bins_local = df.resample('W-MON').mean().index
-                delta_local = timedelta(weeks=1)
-                fmt_local = "Week of %B %d, %Y"
-                label_prefix = "Week"
-            elif view_mode_local == "Monthly":
-                bins_local = df.resample('MS').mean().index
-                delta_local = pd.DateOffset(months=1)
-                fmt_local = "%B %Y"
-                label_prefix = "Month"
-            else:
-                return [], None, None, None
-            return bins_local, delta_local, fmt_local, label_prefix
-
-        # Batch download (disabled for Google Drive version to avoid complexity)
-        if not USE_GOOGLE_DRIVE and view_mode in ["Daily", "Weekly", "Monthly"] and st.sidebar.button(f"⬇️ Download All {view_mode} Plots"):
-            with tempfile.TemporaryDirectory() as tmpdir:
-                zip_path = os.path.join(tmpdir, f"{sensor_id}_{view_mode.lower()}_plots.zip")
-
-                with zipfile.ZipFile(zip_path, 'w') as zipf:
-                    bins, delta, fmt, label_prefix = get_time_bins(view_mode)
-
-                    for param in selected_params:
-                        for start_time in bins:
-                            end_time = start_time + delta
-                            sub_df = df[(df.index >= start_time) & (df.index < end_time)]
-
-                            if sub_df.empty:
-                                continue
-
-                            title = f"{param_display[param]} ({start_time.strftime(fmt)})"
-                            file_name = f"{sensor_id}_{param}_{start_time.strftime('%Y-%m-%d')}.png"
-
-                            fig = px.line(
-                                sub_df,
-                                y=param,
-                                title=title,
-                                labels={"value": param_display[param]},
-                                template="plotly_white"
-                            )
-                            fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
-
-                            file_path = os.path.join(tmpdir, file_name)
-                            try:
-                                # Try kaleido first, fallback to HTML if needed
-                                try:
-                                    # Reduced scale to prevent memory issues
-                                    pio.write_image(fig, file_path, scale=1.5, width=800, height=400)
-                                    zipf.write(file_path, arcname=file_name)
-                                except Exception:
-                                    # Create HTML fallback
-                                    html_filename = file_name.replace('.png', '.html')
-                                    html_path = os.path.join(tmpdir, html_filename)
-                                    html_string = fig.to_html(include_plotlyjs='cdn')
-                                    with open(html_path, 'w') as html_file:
-                                        html_file.write(html_string)
-                                    zipf.write(html_path, arcname=html_filename)
-                            except Exception as e:
-                                st.warning(f"Could not generate plot for {param}: {str(e)}")
-
-                with open(zip_path, "rb") as f:
-                    st.download_button(
-                        label=f"📦 Download All {view_mode} Plots",
-                        data=f,
-                        file_name=f"{sensor_id}_{view_mode.lower()}_plots.zip",
-                        mime="application/zip"
-                    )
-
-        if USE_GOOGLE_DRIVE:
-            st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")
+        st.info("💡 **Note**: For multiple plots, download each one individually as HTML, then convert to PNG using your browser.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit and Plotly")

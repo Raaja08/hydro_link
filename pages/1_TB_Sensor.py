@@ -2,13 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-import gc
 from datetime import datetime, timedelta
-import plotly.io as pio
 from PIL import Image
 import base64
-import tempfile
-import zipfile
 
 # Import Google Drive utilities
 try:
@@ -656,45 +652,24 @@ if selected_file:
         # ---------------------------
         # DOWNLOAD OPTIONS
         # ---------------------------
-        col1, col2 = st.columns(2)
+        st.markdown("### 📥 Download Plot")
         
-        with col1:
-            if st.button("🖼️ Download as PNG"):
-                filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
-                
-                # Use kaleido engine only (future-proof)
-                try:
-                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                        # Reduced scale to prevent memory issues
-                        pio.write_image(fig, tmp_file.name, scale=1.5, width=800, height=400)
-                        with open(tmp_file.name, "rb") as f:
-                            file_data = f.read()
-                        os.unlink(tmp_file.name)
-                        gc.collect()
-                        st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
-                        st.success("✅ PNG downloaded successfully!")
-                except Exception as e:
-                    st.error("PNG download failed.")
-                    st.info("💡 Try HTML download or manual methods: Right-click plot → 'Save image as...'")
-                    # Clear any potential memory issues
-                    gc.collect()
+        # HTML Download only (eliminates PNG memory issues)
+        html_filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.html"
         
-        with col2:
-            if st.button("📄 Download as HTML"):
-                html_filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.html"
-                
-                try:
-                    html_string = fig.to_html(include_plotlyjs='cdn')
-                    st.download_button(
-                        "📄 Download Interactive HTML", 
-                        html_string.encode(), 
-                        file_name=html_filename, 
-                        mime="text/html"
-                    )
-                    st.success("✅ Interactive HTML downloaded!")
-                    st.info("💡 Open HTML file in browser, then screenshot or save as PNG.")
-                except Exception as e:
-                    st.error(f"HTML download failed: {str(e)}")
+        try:
+            html_string = fig.to_html(include_plotlyjs='cdn')
+            st.download_button(
+                "📄 Download Interactive HTML Plot", 
+                html_string.encode(), 
+                file_name=html_filename, 
+                mime="text/html",
+                help="Download as HTML file. Open in browser to view interactively or save as PNG."
+            )
+            st.info("💡 **How to get PNG:** Open the downloaded HTML file in your browser, then right-click the plot and select 'Save image as...' to save as PNG.")
+        except Exception as e:
+            st.error(f"Download failed: {str(e)}")
+            st.info("💡 **Alternative:** Right-click the plot above and select 'Save image as...' for direct PNG download.")
 
         # Note: Batch download feature disabled for Google Drive version to avoid complexity
 
