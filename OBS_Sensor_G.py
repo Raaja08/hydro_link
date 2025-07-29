@@ -277,12 +277,6 @@ if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
             except Exception:
                 pass  # Silently handle access errors
     
-    # Final atmospheric data status
-    if atmos_file_id:
-        st.sidebar.success("🌤️ Atmospheric data: Available")
-    else:
-        st.sidebar.warning("⚠️ Atmospheric data: Not found")
-    
     if not obs_folders:
         st.error("🔍 No OBS sensor folders found in Google Drive. Please check your folder structure and permissions.")
         st.stop()

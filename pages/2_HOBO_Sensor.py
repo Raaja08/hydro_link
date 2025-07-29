@@ -161,7 +161,6 @@ else:
 # ---------------------------
 if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     # Google Drive file selection
-    st.sidebar.markdown("### 📁 Google Drive Data Source")
     
     drive_manager = get_drive_manager()
     if not drive_manager.service:
@@ -334,6 +333,7 @@ if selected_file:
                 labels={"value": param_display[param]},
                 template="plotly_white"
             )
+            fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
             st.plotly_chart(fig, use_container_width=True)
 
             # HTML Download only

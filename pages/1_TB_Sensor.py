@@ -248,9 +248,10 @@ else:
 # ---------------------------
 # FILE SELECTION
 # ---------------------------
+# FILE SELECTION
+# ---------------------------
 if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
     # Google Drive file selection
-    st.sidebar.markdown("### 📁 Google Drive Data Source")
     
     drive_manager = get_drive_manager()
     if not drive_manager.service:
@@ -668,5 +669,4 @@ if selected_file:
         except Exception as e:
             st.error(f"Download failed: {str(e)}")
 
-        # Note: Batch download feature disabled for Google Drive version to avoid complexity
-        st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")
+        st.info("💡 **Note**: Download individual plots as interactive HTML files.")
