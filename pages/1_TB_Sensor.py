@@ -11,24 +11,7 @@ try:
     GOOGLE_DRIVE_ENABLED = True
 except ImportError:
     GOOGLE_DRIVE_ENABLED = False
-    st.warning("Goog    sen    
-    sensor_id = selected_file.replace(".csv", "")
-
-    # Parameters section (to match OBS and HOBO pattern)
-    st.sidebar.markdown("### 📌 Parameters")
-    data_type = st.sidebar.radio("", ["Rainfall", "Temperature"])
-    
-    # Time Range section
-    st.sidebar.markdown("### 🗓️ Time Range")
-    view_mode = st.sidebar.radio("View by:", ["Daily", "Monthly", "Yearly", "Custom"])elected_file.replace(".csv", "")
-
-    # Parameters section (to match OBS and HOBO pattern)
-    st.sidebar.markdown("### 📌 Parameters")
-    data_type = st.sidebar.radio("", ["Rainfall", "Temperature"])
-    
-    # Time Range section
-    st.sidebar.markdown("### 🗓️ Time Range")
-    view_mode = st.sidebar.radio("View by:", ["Daily", "Monthly", "Yearly", "Custom"])integration not available. Install required packages: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib")
+    st.warning("Google Drive integration not available. Install required packages: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib")
 
 # ---------------------------
 # CONFIGURATION
@@ -350,8 +333,8 @@ if selected_file:
     sensor_id = selected_file.replace(".csv", "")
 
     # Parameters section (to match OBS and HOBO pattern)
-    st.sidebar.markdown("### � Parameters")
-    data_type = st.sidebar.radio("📊 Data Type:", ["Rainfall", "Temperature"])
+    st.sidebar.markdown("### 📌 Parameters")
+    data_type = st.sidebar.radio("", ["Rainfall", "Temperature"])
     
     # Time Range section
     st.sidebar.markdown("### 🗓️ Time Range")
