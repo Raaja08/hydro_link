@@ -17,8 +17,8 @@ except ImportError:
 # ---------------------------
 # CONFIGURATION
 # ---------------------------
-# Toggle between local and Google Drive data sources
-USE_GOOGLE_DRIVE = st.sidebar.checkbox("📁 Use Google Drive Data", value=True, help="Check to load data from Google Drive instead of local storage")
+# Always use Google Drive for data sources
+USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
 
 # Google Drive folder IDs
 LOGO_FOLDER_ID = "1IQcw6pn4x9VFIRkafzLbfChbRzfQPz7K"  # Logo assets folder
@@ -292,16 +292,25 @@ if selected_file:
         time_title = f"{start.strftime('%b %d, %Y')} to {end.strftime('%b %d, %Y')}"
     else:
         if view_mode == "Daily":
-            bins = df.resample('D').mean().index
+            # Calendar view for daily selection (like TB Sensor)
+            st.sidebar.markdown("📅 Select Date:")
+            selected_date = st.sidebar.date_input(
+                "Choose date:", 
+                value=min_date.date(),
+                min_value=min_date.date(),
+                max_value=max_date.date()
+            )
+            selected_bin = pd.Timestamp(selected_date)
             delta = timedelta(days=1)
         elif view_mode == "Weekly":
             bins = df.resample('W-MON').mean().index
+            selected_bin = st.sidebar.selectbox("📆 Select week:", bins)
             delta = timedelta(weeks=1)
-        else:
+        else:  # Monthly
             bins = df.resample('MS').mean().index
+            selected_bin = st.sidebar.selectbox("📆 Select month:", bins)
             delta = pd.DateOffset(months=1)
 
-        selected_bin = st.sidebar.selectbox("📆 Select time bin:", bins)
         selected_end = selected_bin + delta
         filtered_df = df[(df.index >= selected_bin) & (df.index < selected_end)]
 
@@ -327,7 +336,7 @@ if selected_file:
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # HTML Download only (eliminates PNG memory issues)
+            # HTML Download only
             html_filename = f"{sensor_id}_{view_mode}_{param}.html"
             try:
                 html_string = fig.to_html(include_plotlyjs='cdn')
@@ -337,14 +346,12 @@ if selected_file:
                     file_name=html_filename, 
                     mime="text/html",
                     key=f"html_{param}",
-                    help="Download as HTML file. Open in browser to view interactively or save as PNG."
+                    help="Download interactive HTML plot file."
                 )
-                st.info("💡 **How to get PNG:** Open the downloaded HTML file in your browser, then right-click the plot and select 'Save image as...' to save as PNG.")
             except Exception as e:
                 st.error(f"Download failed: {str(e)}")
-                st.info("💡 **Alternative:** Right-click the plot above and select 'Save image as...' for direct PNG download.")
 
-        st.info("💡 **Note**: For multiple plots, download each one individually as HTML, then convert to PNG using your browser.")
+        st.info("💡 **Note**: Download individual plots as interactive HTML files.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit and Plotly")

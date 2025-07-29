@@ -29,8 +29,8 @@ if st.sidebar.button("🗑️ Clear Cache"):
     st.cache_data.clear()
     st.rerun()
 
-# Toggle between local and Google Drive data sources
-USE_GOOGLE_DRIVE = st.sidebar.checkbox("📁 Use Google Drive Data", value=True, help="Check to load data from Google Drive instead of local storage")
+# Always use Google Drive for data sources
+USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
 
 # Google Drive folder IDs
 LOGO_FOLDER_ID = "1IQcw6pn4x9VFIRkafzLbfChbRzfQPz7K"  # Logo assets folder
@@ -398,20 +398,31 @@ if selected_file:
         bins = [start]
     else:
         if view_mode == "Daily":
-            bins = df[start_of_bins:].resample('D').mean().index
+            # Calendar view for daily selection (like TB Sensor)
+            st.sidebar.markdown("📅 Select Date:")
+            selected_date = st.sidebar.date_input(
+                "Choose date:", 
+                value=start_of_bins.date(),
+                min_value=start_of_bins.date(),
+                max_value=max_date.date()
+            )
+            selected_bin = pd.Timestamp(selected_date)
             delta = timedelta(days=1)
         elif view_mode == "Weekly":
             bins = df[start_of_bins:].resample('W-MON').mean().index
+            if len(bins) == 0:
+                st.warning("No data available after filtering or outlier cleaning. Please adjust your filters or select a different sensor.")
+                st.stop()
+            selected_bin = st.sidebar.selectbox("📆 Select week:", bins)
             delta = timedelta(weeks=1)
-        else:
+        else:  # Monthly
             bins = df[start_of_bins:].resample('MS').mean().index
+            if len(bins) == 0:
+                st.warning("No data available after filtering or outlier cleaning. Please adjust your filters or select a different sensor.")
+                st.stop()
+            selected_bin = st.sidebar.selectbox("📆 Select month:", bins)
             delta = pd.DateOffset(months=1)
 
-        if len(bins) == 0:
-            st.warning("No data available after filtering or outlier cleaning. Please adjust your filters or select a different sensor.")
-            st.stop()
-            
-        selected_bin = st.sidebar.selectbox("📆 Select time bin:", bins)
         selected_end = selected_bin + delta
         filtered_df = df[(df.index >= selected_bin) & (df.index < selected_end)]
 
@@ -443,7 +454,7 @@ if selected_file:
             fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-            # HTML Download only (eliminates PNG memory issues)
+            # HTML Download only
             html_filename = f"{sensor_name}_{view_mode}_{param}.html"
             try:
                 html_string = fig.to_html(include_plotlyjs='cdn')
@@ -453,12 +464,10 @@ if selected_file:
                     file_name=html_filename, 
                     mime="text/html",
                     key=param,
-                    help="Download as HTML file. Open in browser to view interactively or save as PNG."
+                    help="Download interactive HTML plot file."
                 )
-                st.info("💡 **How to get PNG:** Open the downloaded HTML file in your browser, then right-click the plot and select 'Save image as...' to save as PNG.")
             except Exception as e:
                 st.error(f"Download failed: {str(e)}")
-                st.info("💡 **Alternative:** Right-click the plot above and select 'Save image as...' for direct PNG download.")
 
         # Batch download function
         def get_time_bins(view_mode_local):
@@ -482,7 +491,7 @@ if selected_file:
             return bins_local, delta_local, fmt_local, label_prefix
 
         # Note: Batch download feature disabled to avoid complexity and memory issues
-        st.info("💡 **Note**: For multiple plots, download each one individually as HTML, then convert to PNG using your browser.")
+        st.info("💡 **Note**: Download individual plots as interactive HTML files.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit and Plotly")

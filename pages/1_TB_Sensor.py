@@ -16,8 +16,8 @@ except ImportError:
 # ---------------------------
 # CONFIGURATION
 # ---------------------------
-# Toggle between local and Google Drive data sources
-USE_GOOGLE_DRIVE = st.sidebar.checkbox("📁 Use Google Drive Data", value=True, help="Check to load data from Google Drive instead of local storage")
+# Always use Google Drive for data sources
+USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
 
 # Google Drive folder IDs
 LOGO_FOLDER_ID = "1IQcw6pn4x9VFIRkafzLbfChbRzfQPz7K"  # Logo assets folder
@@ -653,7 +653,7 @@ if selected_file:
         # ---------------------------
         st.markdown("### 📥 Download Plot")
         
-        # HTML Download only (eliminates PNG memory issues)
+        # HTML Download only
         html_filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.html"
         
         try:
@@ -663,14 +663,10 @@ if selected_file:
                 html_string.encode(), 
                 file_name=html_filename, 
                 mime="text/html",
-                help="Download as HTML file. Open in browser to view interactively or save as PNG."
+                help="Download interactive HTML plot file."
             )
-            st.info("💡 **How to get PNG:** Open the downloaded HTML file in your browser, then right-click the plot and select 'Save image as...' to save as PNG.")
         except Exception as e:
             st.error(f"Download failed: {str(e)}")
-            st.info("💡 **Alternative:** Right-click the plot above and select 'Save image as...' for direct PNG download.")
-
-        # Note: Batch download feature disabled for Google Drive version to avoid complexity
 
         # Note: Batch download feature disabled for Google Drive version to avoid complexity
         st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")
