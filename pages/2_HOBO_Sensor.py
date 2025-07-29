@@ -17,6 +17,11 @@ except ImportError:
 # ---------------------------
 # CONFIGURATION
 # ---------------------------
+# Clear cache button in sidebar
+if st.sidebar.button("🗑️ Clear Cache"):
+    st.cache_data.clear()
+    st.rerun()
+
 # Always use Google Drive for data sources
 USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
 
