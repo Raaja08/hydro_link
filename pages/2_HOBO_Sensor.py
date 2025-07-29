@@ -333,21 +333,37 @@ if selected_file:
             st.plotly_chart(fig, use_container_width=True)
 
             if st.button(f"⬇️ Download {param_display[param]} Plot as PNG", key=param):
+                filename = f"{sensor_id}_{view_mode}_{param}.png"
+                download_success = False
+                
+                # Try kaleido first
                 try:
-                    filename = f"{sensor_id}_{view_mode}_{param}.png"
-                    # Use temporary file to avoid memory issues
                     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
                         pio.write_image(fig, tmp_file.name, format="png", engine="kaleido", scale=2, width=1000, height=500)
                         with open(tmp_file.name, "rb") as f:
                             file_data = f.read()
-                        # Clean up temporary file
                         os.unlink(tmp_file.name)
+                        st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                        st.success("✅ Plot downloaded successfully!")
+                        download_success = True
+                except Exception:
+                    # Fallback to HTML
+                    try:
+                        html_filename = filename.replace('.png', '.html')
+                        html_string = fig.to_html(include_plotlyjs='cdn')
                         st.download_button(
-                            label="Download", data=file_data, file_name=filename, mime="image/png"
+                            "📄 Download as Interactive HTML", 
+                            html_string.encode(), 
+                            file_name=html_filename, 
+                            mime="text/html"
                         )
-                except Exception as e:
-                    st.error(f"Error generating plot image: {str(e)}")
-                    st.info("💡 **Tip**: Try refreshing the page and generating the plot again.")
+                        st.info("💡 Downloaded as interactive HTML. Open in browser and take screenshot.")
+                        download_success = True
+                    except Exception:
+                        st.warning("⚠️ Automatic download not available. Use right-click → 'Save image as...' or the camera icon 📷 on the plot.")
+                
+                if not download_success:
+                    st.error("Unable to generate download. Please use manual options.")
 
         # Batch download function
         def get_time_bins(view_mode_local):
@@ -400,8 +416,18 @@ if selected_file:
 
                             file_path = os.path.join(tmpdir, file_name)
                             try:
-                                pio.write_image(fig, file_path, engine="kaleido", scale=2, width=1000, height=500)
-                                zipf.write(file_path, arcname=file_name)
+                                # Try kaleido first, fallback to HTML if needed
+                                try:
+                                    pio.write_image(fig, file_path, engine="kaleido", scale=2, width=1000, height=500)
+                                    zipf.write(file_path, arcname=file_name)
+                                except Exception:
+                                    # Create HTML fallback
+                                    html_filename = file_name.replace('.png', '.html')
+                                    html_path = os.path.join(tmpdir, html_filename)
+                                    html_string = fig.to_html(include_plotlyjs='cdn')
+                                    with open(html_path, 'w') as html_file:
+                                        html_file.write(html_string)
+                                    zipf.write(html_path, arcname=html_filename)
                             except Exception as e:
                                 st.warning(f"Could not generate plot for {param}: {str(e)}")
 

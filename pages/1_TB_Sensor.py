@@ -657,22 +657,58 @@ if selected_file:
         # DOWNLOAD OPTIONS
         # ---------------------------
         if st.button("⬇️ Download Plot as PNG"):
+            filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
+            
+            # Try multiple approaches in order of preference
+            download_success = False
+            
+            # Approach 1: Try kaleido with Chrome (best quality)
             try:
-                filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
-                # Use temporary file to avoid memory issues
                 with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                    # Use lower scale and smaller dimensions to reduce memory usage
                     pio.write_image(fig, tmp_file.name, scale=2, width=1000, height=500, engine="kaleido")
                     with open(tmp_file.name, "rb") as f:
                         file_data = f.read()
-                    # Clean up temporary file
                     os.unlink(tmp_file.name)
-                    # Force garbage collection to free memory
                     gc.collect()
-                    st.download_button("Download", file_data, file_name=filename, mime="image/png")
-            except Exception as e:
-                st.error(f"Error generating plot image: {str(e)}")
-                st.info("💡 **Tip**: Try refreshing the page and generating the plot again.")
+                    st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                    st.success("✅ Plot downloaded successfully!")
+                    download_success = True
+            except Exception as kaleido_error:
+                # Approach 2: Try HTML export as fallback
+                try:
+                    html_filename = filename.replace('.png', '.html')
+                    html_string = fig.to_html(include_plotlyjs='cdn')
+                    st.download_button(
+                        "📄 Download as Interactive HTML", 
+                        html_string.encode(), 
+                        file_name=html_filename, 
+                        mime="text/html"
+                    )
+                    st.info("💡 Downloaded as interactive HTML instead of PNG. You can open this file in any browser and take a screenshot.")
+                    download_success = True
+                except Exception as html_error:
+                    # Approach 3: Provide manual alternatives
+                    st.warning("⚠️ Automatic download not available. Please use one of these alternatives:")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.info("📸 **Option 1**: Right-click on the plot above and select 'Save image as...'")
+                    with col2:
+                        st.info("� **Option 2**: Use the camera icon 📷 in the top-right corner of the plot")
+                    
+                    # Show plot configuration for manual export
+                    with st.expander("🔧 Advanced: Plot Configuration"):
+                        st.code(f"""
+# If you need to recreate this plot elsewhere:
+- Title: {time_title}
+- Data points: {len(plot_df)}
+- Date range: {plot_df.index.min()} to {plot_df.index.max()}
+- Y-axis: {data_type} ({'mm' if data_type == 'Rainfall' else '°C'})
+                        """)
+            
+            # Only show error if none of the approaches worked
+            if not download_success:
+                st.error("Unable to generate automatic download. Please use the manual options above.")
 
         # Note: Batch download feature disabled for Google Drive version to avoid complexity
         st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")
