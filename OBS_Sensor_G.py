@@ -1,12 +1,13 @@
 # OBS Sensor - Google Drive Version
-# Updated: 2025-07-28 21:26 - Fixed datetime parsing issues
-# Version: 2.1 - Force Streamlit Cloud refresh
+# Updated: 2025-07-29 Emergency Fix - Memory corruption resolution
+# Version: 2.3 - Emergency cache clearing and memory management
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
 from datetime import date, timedelta
 import base64
+import gc
 
 # Import Google Drive utilities
 try:
@@ -24,10 +25,26 @@ except Exception as e:
 # ---------------------------
 # CONFIGURATION
 # ---------------------------
+# Emergency cache clearing - clear all caches on startup
+try:
+    st.cache_data.clear()
+    if hasattr(st.cache_resource, 'clear'):
+        st.cache_resource.clear()
+    gc.collect()  # Force garbage collection
+except Exception as e:
+    pass  # Silently handle any cache clearing errors
+
 # Clear cache button in sidebar
 if st.sidebar.button("🗑️ Clear Cache"):
-    st.cache_data.clear()
-    st.rerun()
+    try:
+        st.cache_data.clear()
+        if hasattr(st.cache_resource, 'clear'):
+            st.cache_resource.clear()
+        gc.collect()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Cache clearing failed: {e}")
+        st.rerun()
 
 # Always use Google Drive for data sources
 USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
@@ -60,33 +77,50 @@ st.set_page_config(page_title="OBS Sensor", layout="wide")
 # ---------------------------
 @st.cache_data
 def load_csv_from_drive(file_id):
-    """Load CSV from Google Drive"""
+    """Load CSV from Google Drive with memory management"""
     if not GOOGLE_DRIVE_ENABLED:
         return None
-        
-    drive_manager = get_drive_manager()
-    if not drive_manager.service:
-        drive_manager.authenticate()
     
-    df = drive_manager.download_file(file_id)
-    if df is not None:
+    try:
+        drive_manager = get_drive_manager()
+        if not drive_manager.service:
+            drive_manager.authenticate()
+        
+        df = drive_manager.download_file(file_id)
+        if df is not None:
+            # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+            df.dropna(subset=['timestamp'], inplace=True)
+            df.set_index('timestamp', inplace=True)
+            df.sort_index(inplace=True)
+            
+            # Memory optimization
+            for col in df.select_dtypes(include=['float64']).columns:
+                df[col] = pd.to_numeric(df[col], downcast='float')
+        
+        return df
+    except Exception as e:
+        st.error(f"Error loading data from Google Drive: {e}")
+        return None
+
+@st.cache_data
+def load_csv(file_path):
+    try:
+        df = pd.read_csv(file_path)
         # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df.dropna(subset=['timestamp'], inplace=True)
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
-    
-    return df
-
-@st.cache_data
-def load_csv(file_path):
-    df = pd.read_csv(file_path)
-    # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-    df.dropna(subset=['timestamp'], inplace=True)
-    df.set_index('timestamp', inplace=True)
-    df.sort_index(inplace=True)
-    return df
+        
+        # Memory optimization
+        for col in df.select_dtypes(include=['float64']).columns:
+            df[col] = pd.to_numeric(df[col], downcast='float')
+        
+        return df
+    except Exception as e:
+        st.error(f"Error loading CSV file: {e}")
+        return None
 
 @st.cache_data
 def load_metadata_from_drive(file_id):
@@ -310,31 +344,40 @@ else:
 # MAIN CONTENT
 # ---------------------------
 if selected_file:
-    # Load data based on source
-    if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
-        with st.spinner("Loading data from Google Drive..."):
-            df = load_csv_from_drive(selected_file_id)
-            
-            # Load atmospheric data
-            if atmos_file_id:
-                atmos_df = load_atmos_from_drive(atmos_file_id)
-            else:
-                st.info("ℹ️ **Atmospheric data unavailable** - Water level will be displayed as absolute pressure readings")
-                atmos_df = pd.DataFrame()  # Empty dataframe
-            
-            # Load metadata
-            if metadata_file_id:
-                metadata_df = load_metadata_from_drive(metadata_file_id)
-            else:
-                metadata_df = pd.DataFrame()  # Empty dataframe
+    try:
+        # Load data based on source
+        if USE_GOOGLE_DRIVE and GOOGLE_DRIVE_ENABLED:
+            with st.spinner("Loading data from Google Drive..."):
+                df = load_csv_from_drive(selected_file_id)
                 
-        if df is None:
-            st.error("Failed to load data from Google Drive")
-            st.stop()
-    else:
-        df = load_csv(os.path.join(obs_path, selected_file))
-        atmos_df = load_atmos()
-        metadata_df = load_metadata()
+                # Load atmospheric data
+                if atmos_file_id:
+                    atmos_df = load_atmos_from_drive(atmos_file_id)
+                else:
+                    st.info("ℹ️ **Atmospheric data unavailable** - Water level will be displayed as absolute pressure readings")
+                    atmos_df = pd.DataFrame()  # Empty dataframe
+                
+                # Load metadata
+                if metadata_file_id:
+                    metadata_df = load_metadata_from_drive(metadata_file_id)
+                else:
+                    metadata_df = pd.DataFrame()  # Empty dataframe
+                    
+            if df is None:
+                st.error("Failed to load data from Google Drive")
+                st.stop()
+        else:
+            df = load_csv(os.path.join(obs_path, selected_file))
+            if df is None:
+                st.error("Failed to load local data")
+                st.stop()
+            atmos_df = load_atmos()
+            metadata_df = load_metadata()
+            
+    except Exception as e:
+        st.error(f"Critical error loading data: {e}")
+        st.info("Try clearing the cache using the button in the sidebar, or refresh the page.")
+        st.stop()
 
     # Get sensor metadata (height)
     sensor_id = selected_file.split(".")[0]  # e.g., obs_s1_2023

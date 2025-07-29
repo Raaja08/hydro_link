@@ -5,6 +5,7 @@ import plotly.express as px
 import os
 from datetime import datetime, timedelta
 import base64
+import gc
 
 # Import Google Drive utilities
 try:
@@ -17,10 +18,26 @@ except ImportError:
 # ---------------------------
 # CONFIGURATION
 # ---------------------------
+# Emergency cache clearing - clear all caches on startup
+try:
+    st.cache_data.clear()
+    if hasattr(st.cache_resource, 'clear'):
+        st.cache_resource.clear()
+    gc.collect()  # Force garbage collection
+except Exception as e:
+    pass  # Silently handle any cache clearing errors
+
 # Clear cache button in sidebar
 if st.sidebar.button("🗑️ Clear Cache"):
-    st.cache_data.clear()
-    st.rerun()
+    try:
+        st.cache_data.clear()
+        if hasattr(st.cache_resource, 'clear'):
+            st.cache_resource.clear()
+        gc.collect()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Cache clearing failed: {e}")
+        st.rerun()
 
 # Always use Google Drive for data sources
 USE_GOOGLE_DRIVE = GOOGLE_DRIVE_ENABLED
