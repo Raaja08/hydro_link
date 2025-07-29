@@ -332,38 +332,47 @@ if selected_file:
             fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-            if st.button(f"⬇️ Download {param_display[param]} Plot as PNG", key=param):
-                filename = f"{sensor_id}_{view_mode}_{param}.png"
-                download_success = False
-                
-                # Try kaleido first
-                try:
-                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                        pio.write_image(fig, tmp_file.name, format="png", engine="kaleido", scale=2, width=1000, height=500)
-                        with open(tmp_file.name, "rb") as f:
-                            file_data = f.read()
-                        os.unlink(tmp_file.name)
-                        st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
-                        st.success("✅ Plot downloaded successfully!")
-                        download_success = True
-                except Exception:
-                    # Fallback to HTML
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button(f"🖼️ Download {param_display[param]} PNG", key=f"png_{param}"):
+                    filename = f"{sensor_id}_{view_mode}_{param}.png"
+                    
+                    # Try multiple PNG engines
+                    png_engines = ["kaleido", "orca", "static"]
+                    png_success = False
+                    
+                    for engine in png_engines:
+                        try:
+                            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                                pio.write_image(fig, tmp_file.name, format="png", engine=engine, scale=2, width=1000, height=500)
+                                with open(tmp_file.name, "rb") as f:
+                                    file_data = f.read()
+                                os.unlink(tmp_file.name)
+                                st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                                st.success(f"✅ PNG downloaded using {engine}!")
+                                png_success = True
+                                break
+                        except Exception:
+                            if engine == png_engines[-1]:
+                                st.error("PNG download failed. Try HTML option or manual methods.")
+                            continue
+            
+            with col2:
+                if st.button(f"📄 Download {param_display[param]} HTML", key=f"html_{param}"):
+                    html_filename = f"{sensor_id}_{view_mode}_{param}.html"
                     try:
-                        html_filename = filename.replace('.png', '.html')
                         html_string = fig.to_html(include_plotlyjs='cdn')
                         st.download_button(
-                            "📄 Download as Interactive HTML", 
+                            "📄 Download HTML", 
                             html_string.encode(), 
                             file_name=html_filename, 
                             mime="text/html"
                         )
-                        st.info("💡 Downloaded as interactive HTML. Open in browser and take screenshot.")
-                        download_success = True
+                        st.success("✅ HTML downloaded!")
+                        st.info("💡 Open in browser, then screenshot or save as PNG.")
                     except Exception:
-                        st.warning("⚠️ Automatic download not available. Use right-click → 'Save image as...' or the camera icon 📷 on the plot.")
-                
-                if not download_success:
-                    st.error("Unable to generate download. Please use manual options.")
+                        st.error("HTML download failed. Use right-click → 'Save image as...' on the plot.")
 
         # Batch download function
         def get_time_bins(view_mode_local):

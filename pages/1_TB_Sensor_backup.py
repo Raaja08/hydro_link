@@ -656,52 +656,76 @@ if selected_file:
         # ---------------------------
         # DOWNLOAD OPTIONS
         # ---------------------------
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("🖼️ Download as PNG"):
-                filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
-                
-                # Try multiple PNG engines in order of preference
-                png_engines = ["kaleido", "orca", "static"]
-                png_success = False
-                
-                for engine in png_engines:
-                    try:
-                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                            pio.write_image(fig, tmp_file.name, scale=2, width=1000, height=500, engine=engine)
-                            with open(tmp_file.name, "rb") as f:
-                                file_data = f.read()
-                            os.unlink(tmp_file.name)
-                            gc.collect()
-                            st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
-                            st.success(f"✅ PNG downloaded successfully using {engine}!")
-                            png_success = True
-                            break
-                    except Exception as e:
-                        if engine == png_engines[-1]:  # Last engine failed
-                            st.error("PNG download failed with all engines.")
-                            st.info("💡 Try HTML download or manual methods: Right-click plot → 'Save image as...'")
-                        continue
-        
-        with col2:
-            if st.button("📄 Download as HTML"):
-                html_filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.html"
-                
+        if st.button("🖼️ Download as PNG"):
+            filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
+            
+            # Try multiple PNG engines in order of preference
+            png_engines = ["kaleido", "orca", "static"]
+            png_success = False
+            
+            for engine in png_engines:
                 try:
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                        pio.write_image(fig, tmp_file.name, scale=2, width=1000, height=500, engine=engine)
+                        with open(tmp_file.name, "rb") as f:
+                            file_data = f.read()
+                        os.unlink(tmp_file.name)
+                        gc.collect()
+                        st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                        st.success(f"✅ PNG downloaded successfully using {engine}!")
+                        png_success = True
+                        break
+                except Exception as e:
+                    if engine == png_engines[-1]:  # Last engine failed
+                        st.error(f"PNG download failed with all engines. Error: {str(e)}")
+                        st.info("💡 Try manual methods: Right-click plot → 'Save image as...' or use camera icon 📷")
+                    continue
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                    pio.write_image(fig, tmp_file.name, scale=2, width=1000, height=500, engine="kaleido")
+                    with open(tmp_file.name, "rb") as f:
+                        file_data = f.read()
+                    os.unlink(tmp_file.name)
+                    gc.collect()
+                    st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                    st.success("✅ Plot downloaded successfully!")
+                    download_success = True
+            except Exception as kaleido_error:
+                # Approach 2: Try HTML export as fallback
+                try:
+                    html_filename = filename.replace('.png', '.html')
                     html_string = fig.to_html(include_plotlyjs='cdn')
                     st.download_button(
-                        "📄 Download Interactive HTML", 
+                        "📄 Download as Interactive HTML", 
                         html_string.encode(), 
                         file_name=html_filename, 
                         mime="text/html"
                     )
-                    st.success("✅ Interactive HTML downloaded!")
-                    st.info("💡 Open HTML file in browser, then screenshot or save as PNG.")
-                except Exception as e:
-                    st.error(f"HTML download failed: {str(e)}")
-
-        # Note: Batch download feature disabled for Google Drive version to avoid complexity
+                    st.info("💡 Downloaded as interactive HTML instead of PNG. You can open this file in any browser and take a screenshot.")
+                    download_success = True
+                except Exception as html_error:
+                    # Approach 3: Provide manual alternatives
+                    st.warning("⚠️ Automatic download not available. Please use one of these alternatives:")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.info("📸 **Option 1**: Right-click on the plot above and select 'Save image as...'")
+                    with col2:
+                        st.info("� **Option 2**: Use the camera icon 📷 in the top-right corner of the plot")
+                    
+                    # Show plot configuration for manual export
+                    with st.expander("🔧 Advanced: Plot Configuration"):
+                        st.code(f"""
+# If you need to recreate this plot elsewhere:
+- Title: {time_title}
+- Data points: {len(plot_df)}
+- Date range: {plot_df.index.min()} to {plot_df.index.max()}
+- Y-axis: {data_type} ({'mm' if data_type == 'Rainfall' else '°C'})
+                        """)
+            
+            # Only show error if none of the approaches worked
+            if not download_success:
+                st.error("Unable to generate automatic download. Please use the manual options above.")
 
         # Note: Batch download feature disabled for Google Drive version to avoid complexity
         st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")
