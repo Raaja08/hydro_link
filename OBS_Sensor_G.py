@@ -55,16 +55,10 @@ else:
 
 st.set_page_config(page_title="OBS Sensor", layout="wide")
 
-# Force clear all cached data to ensure fresh deployment
-try:
-    st.cache_data.clear()
-except:
-    pass  # Ignore if no cache to clear
-
 # ---------------------------
 # UTILITY FUNCTIONS
 # ---------------------------
-# @st.cache_data  # Temporarily disabled to force refresh
+@st.cache_data
 def load_csv_from_drive(file_id):
     """Load CSV from Google Drive"""
     if not GOOGLE_DRIVE_ENABLED:
@@ -84,7 +78,7 @@ def load_csv_from_drive(file_id):
     
     return df
 
-# @st.cache_data  # Temporarily disabled to force refresh
+@st.cache_data
 def load_csv(file_path):
     df = pd.read_csv(file_path)
     # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
@@ -110,7 +104,7 @@ def load_metadata_from_drive(file_id):
 def load_metadata():
     return pd.read_csv(SENSOR_METADATA_PATH)
 
-# @st.cache_data  # Temporarily disabled to force refresh
+@st.cache_data
 def load_atmos_from_drive(file_id):
     """Load atmospheric data from Google Drive"""
     if not GOOGLE_DRIVE_ENABLED:
@@ -130,7 +124,7 @@ def load_atmos_from_drive(file_id):
     
     return df
 
-# @st.cache_data  # Temporarily disabled to force refresh
+@st.cache_data
 def load_atmos():
     df = pd.read_csv(ATMOS_PATH)
     # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
