@@ -53,8 +53,8 @@ def load_csv_from_drive(file_id):
     
     df = drive_manager.download_file(file_id)
     if df is not None:
-        # Specify format for HOBO data timestamps (YYYY-MM-DD HH:MM:SS)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+        # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df.dropna(subset=['timestamp'], inplace=True)
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
@@ -64,8 +64,8 @@ def load_csv_from_drive(file_id):
 @st.cache_data
 def load_csv(file_path):
     df = pd.read_csv(file_path)
-    # Specify format for HOBO data timestamps (YYYY-MM-DD HH:MM:SS)
-    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+    # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df.dropna(subset=['timestamp'], inplace=True)
     df.set_index('timestamp', inplace=True)
     df.sort_index(inplace=True)

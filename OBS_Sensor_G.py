@@ -76,8 +76,8 @@ def load_csv_from_drive(file_id):
     
     df = drive_manager.download_file(file_id)
     if df is not None:
-        # Specify format for OBS data timestamps (YYYY-MM-DD HH:MM:SS)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+        # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df.dropna(subset=['timestamp'], inplace=True)
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
@@ -87,8 +87,8 @@ def load_csv_from_drive(file_id):
 # @st.cache_data  # Temporarily disabled to force refresh
 def load_csv(file_path):
     df = pd.read_csv(file_path)
-    # Specify format for OBS data timestamps (YYYY-MM-DD HH:MM:SS)
-    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+    # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df.dropna(subset=['timestamp'], inplace=True)
     df.set_index('timestamp', inplace=True)
     df.sort_index(inplace=True)
@@ -122,8 +122,8 @@ def load_atmos_from_drive(file_id):
     
     df = drive_manager.download_file(file_id)
     if df is not None:
-        # Specify format for atmospheric data timestamps (M/D/YY H:MM)
-        df['Timestamps'] = pd.to_datetime(df['Timestamps'], format='%m/%d/%y %H:%M', errors='coerce')
+        # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+        df['Timestamps'] = pd.to_datetime(df['Timestamps'], errors='coerce')
         df.rename(columns={' kPa Atmospheric Pressure': 'atm_pressure'}, inplace=True)
         df.dropna(subset=['Timestamps', 'atm_pressure'], inplace=True)
         df = df.set_index('Timestamps').sort_index()
@@ -133,8 +133,8 @@ def load_atmos_from_drive(file_id):
 # @st.cache_data  # Temporarily disabled to force refresh
 def load_atmos():
     df = pd.read_csv(ATMOS_PATH)
-    # Specify format for atmospheric data timestamps (M/D/YY H:MM)
-    df['Timestamps'] = pd.to_datetime(df['Timestamps'], format='%m/%d/%y %H:%M', errors='coerce')
+    # All timestamps now standardized to YYYY-MM-DD HH:MM:SS format
+    df['Timestamps'] = pd.to_datetime(df['Timestamps'], errors='coerce')
     df.rename(columns={' kPa Atmospheric Pressure': 'atm_pressure'}, inplace=True)
     df.dropna(subset=['Timestamps', 'atm_pressure'], inplace=True)
     df = df.set_index('Timestamps').sort_index()
