@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.express as px
 import os
 from datetime import datetime, timedelta
-from PIL import Image
 import base64
 
 # Import Google Drive utilities
