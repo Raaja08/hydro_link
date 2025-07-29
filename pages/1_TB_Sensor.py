@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import gc
 from datetime import datetime, timedelta
 import plotly.io as pio
 from PIL import Image
@@ -51,7 +52,8 @@ def load_csv_from_drive(file_id):
     
     df = drive_manager.download_file(file_id)
     if df is not None:
-        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        # Specify format for TB data timestamps (YYYY-MM-DD HH:MM:SS)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
         df.dropna(subset=['timestamp'], inplace=True)
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
@@ -68,7 +70,8 @@ def load_csv_from_drive(file_id):
 @st.cache_data
 def load_csv(file_path):
     df = pd.read_csv(file_path)
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    # Specify format for TB data timestamps (YYYY-MM-DD HH:MM:SS)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
     df.dropna(subset=['timestamp'], inplace=True)
     df.set_index('timestamp', inplace=True)
     df.sort_index(inplace=True)
@@ -654,10 +657,22 @@ if selected_file:
         # DOWNLOAD OPTIONS
         # ---------------------------
         if st.button("⬇️ Download Plot as PNG"):
-            filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
-            pio.write_image(fig, filename, scale=3, width=1200, height=600)  # Improved quality
-            with open(filename, "rb") as f:
-                st.download_button("Download", f, file_name=filename, mime="image/png")
+            try:
+                filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
+                # Use temporary file to avoid memory issues
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                    # Use lower scale and smaller dimensions to reduce memory usage
+                    pio.write_image(fig, tmp_file.name, scale=2, width=1000, height=500, engine="kaleido")
+                    with open(tmp_file.name, "rb") as f:
+                        file_data = f.read()
+                    # Clean up temporary file
+                    os.unlink(tmp_file.name)
+                    # Force garbage collection to free memory
+                    gc.collect()
+                    st.download_button("Download", file_data, file_name=filename, mime="image/png")
+            except Exception as e:
+                st.error(f"Error generating plot image: {str(e)}")
+                st.info("💡 **Tip**: Try refreshing the page and generating the plot again.")
 
         # Note: Batch download feature disabled for Google Drive version to avoid complexity
         st.info("💡 **Note**: Batch download feature is not available in Google Drive mode. Use individual plot downloads instead.")

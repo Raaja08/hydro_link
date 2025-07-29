@@ -68,7 +68,8 @@ def load_csv_from_drive(file_id):
     
     df = drive_manager.download_file(file_id)
     if df is not None:
-        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        # Specify format for OBS data timestamps (YYYY-MM-DD HH:MM:SS)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
         df.dropna(subset=['timestamp'], inplace=True)
         df.set_index('timestamp', inplace=True)
         df.sort_index(inplace=True)
@@ -78,7 +79,8 @@ def load_csv_from_drive(file_id):
 @st.cache_data
 def load_csv(file_path):
     df = pd.read_csv(file_path)
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    # Specify format for OBS data timestamps (YYYY-MM-DD HH:MM:SS)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
     df.dropna(subset=['timestamp'], inplace=True)
     df.set_index('timestamp', inplace=True)
     df.sort_index(inplace=True)
@@ -112,7 +114,8 @@ def load_atmos_from_drive(file_id):
     
     df = drive_manager.download_file(file_id)
     if df is not None:
-        df['Timestamps'] = pd.to_datetime(df['Timestamps'], errors='coerce')
+        # Specify format for atmospheric data timestamps (M/D/YY H:MM)
+        df['Timestamps'] = pd.to_datetime(df['Timestamps'], format='%m/%d/%y %H:%M', errors='coerce')
         df.rename(columns={' kPa Atmospheric Pressure': 'atm_pressure'}, inplace=True)
         df.dropna(subset=['Timestamps', 'atm_pressure'], inplace=True)
         df = df.set_index('Timestamps').sort_index()
@@ -122,7 +125,8 @@ def load_atmos_from_drive(file_id):
 @st.cache_data
 def load_atmos():
     df = pd.read_csv(ATMOS_PATH)
-    df['Timestamps'] = pd.to_datetime(df['Timestamps'], errors='coerce')
+    # Specify format for atmospheric data timestamps (M/D/YY H:MM)
+    df['Timestamps'] = pd.to_datetime(df['Timestamps'], format='%m/%d/%y %H:%M', errors='coerce')
     df.rename(columns={' kPa Atmospheric Pressure': 'atm_pressure'}, inplace=True)
     df.dropna(subset=['Timestamps', 'atm_pressure'], inplace=True)
     df = df.set_index('Timestamps').sort_index()
@@ -439,12 +443,21 @@ if selected_file:
 
             # Download button
             if st.button(f"⬇️ Download {param_display[param]} Plot as PNG", key=param):
-                filename = f"{sensor_name}_{view_mode}_{param}.png"
-                pio.write_image(fig, filename, format="png")
-                with open(filename, "rb") as file:
-                    st.download_button(
-                        label="Download", data=file, file_name=filename, mime="image/png"
-                    )
+                try:
+                    filename = f"{sensor_name}_{view_mode}_{param}.png"
+                    # Use temporary file to avoid memory issues
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                        pio.write_image(fig, tmp_file.name, format="png", engine="kaleido", scale=2, width=1000, height=500)
+                        with open(tmp_file.name, "rb") as f:
+                            file_data = f.read()
+                        # Clean up temporary file
+                        os.unlink(tmp_file.name)
+                        st.download_button(
+                            label="Download", data=file_data, file_name=filename, mime="image/png"
+                        )
+                except Exception as e:
+                    st.error(f"Error generating plot image: {str(e)}")
+                    st.info("💡 **Tip**: Try refreshing the page and generating the plot again.")
 
         # Batch download function
         def get_time_bins(view_mode_local):
@@ -496,8 +509,11 @@ if selected_file:
                             fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
 
                             file_path = os.path.join(tmpdir, file_name)
-                            pio.write_image(fig, file_path)
-                            zipf.write(file_path, arcname=file_name)
+                            try:
+                                pio.write_image(fig, file_path, engine="kaleido", scale=2, width=1000, height=500)
+                                zipf.write(file_path, arcname=file_name)
+                            except Exception as e:
+                                st.warning(f"Could not generate plot for {param}: {str(e)}")
 
                 with open(zip_path, "rb") as f:
                     st.download_button(
