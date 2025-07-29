@@ -662,27 +662,22 @@ if selected_file:
             if st.button("🖼️ Download as PNG"):
                 filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
                 
-                # Try multiple PNG engines in order of preference
-                png_engines = ["kaleido", "orca", "static"]
-                png_success = False
-                
-                for engine in png_engines:
-                    try:
-                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                            pio.write_image(fig, tmp_file.name, scale=2, width=1000, height=500, engine=engine)
-                            with open(tmp_file.name, "rb") as f:
-                                file_data = f.read()
-                            os.unlink(tmp_file.name)
-                            gc.collect()
-                            st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
-                            st.success(f"✅ PNG downloaded successfully using {engine}!")
-                            png_success = True
-                            break
-                    except Exception as e:
-                        if engine == png_engines[-1]:  # Last engine failed
-                            st.error("PNG download failed with all engines.")
-                            st.info("💡 Try HTML download or manual methods: Right-click plot → 'Save image as...'")
-                        continue
+                # Use kaleido engine only (future-proof)
+                try:
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                        # Reduced scale to prevent memory issues
+                        pio.write_image(fig, tmp_file.name, scale=1.5, width=800, height=400)
+                        with open(tmp_file.name, "rb") as f:
+                            file_data = f.read()
+                        os.unlink(tmp_file.name)
+                        gc.collect()
+                        st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                        st.success("✅ PNG downloaded successfully!")
+                except Exception as e:
+                    st.error("PNG download failed.")
+                    st.info("💡 Try HTML download or manual methods: Right-click plot → 'Save image as...'")
+                    # Clear any potential memory issues
+                    gc.collect()
         
         with col2:
             if st.button("📄 Download as HTML"):

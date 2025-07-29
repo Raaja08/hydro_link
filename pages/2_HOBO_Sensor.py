@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import gc
 from datetime import datetime, timedelta
 import plotly.io as pio
 from PIL import Image
@@ -338,25 +339,20 @@ if selected_file:
                 if st.button(f"🖼️ Download {param_display[param]} PNG", key=f"png_{param}"):
                     filename = f"{sensor_id}_{view_mode}_{param}.png"
                     
-                    # Try multiple PNG engines
-                    png_engines = ["kaleido", "orca", "static"]
-                    png_success = False
-                    
-                    for engine in png_engines:
-                        try:
-                            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                                pio.write_image(fig, tmp_file.name, format="png", engine=engine, scale=2, width=1000, height=500)
-                                with open(tmp_file.name, "rb") as f:
-                                    file_data = f.read()
-                                os.unlink(tmp_file.name)
-                                st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
-                                st.success(f"✅ PNG downloaded using {engine}!")
-                                png_success = True
-                                break
-                        except Exception:
-                            if engine == png_engines[-1]:
-                                st.error("PNG download failed. Try HTML option or manual methods.")
-                            continue
+                    # Use kaleido only (future-proof)
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                            # Reduced scale to prevent memory issues
+                            pio.write_image(fig, tmp_file.name, format="png", scale=1.5, width=800, height=400)
+                            with open(tmp_file.name, "rb") as f:
+                                file_data = f.read()
+                            os.unlink(tmp_file.name)
+                            gc.collect()
+                            st.download_button("📥 Download PNG", file_data, file_name=filename, mime="image/png")
+                            st.success("✅ PNG downloaded!")
+                    except Exception:
+                        st.error("PNG download failed. Try HTML option or manual methods.")
+                        gc.collect()
             
             with col2:
                 if st.button(f"📄 Download {param_display[param]} HTML", key=f"html_{param}"):
@@ -427,7 +423,8 @@ if selected_file:
                             try:
                                 # Try kaleido first, fallback to HTML if needed
                                 try:
-                                    pio.write_image(fig, file_path, engine="kaleido", scale=2, width=1000, height=500)
+                                    # Reduced scale to prevent memory issues
+                                    pio.write_image(fig, file_path, scale=1.5, width=800, height=400)
                                     zipf.write(file_path, arcname=file_name)
                                 except Exception:
                                     # Create HTML fallback
