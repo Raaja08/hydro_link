@@ -334,7 +334,7 @@ if selected_file:
 
     # Parameters section (to match OBS and HOBO pattern)
     st.sidebar.markdown("### 📌 Parameters")
-    data_type = st.sidebar.radio("Data Type", ["Rainfall", "Temperature"], label_visibility="collapsed")
+    data_type = st.sidebar.radio("Select data type:", ["Rainfall", "Temperature"])
     
     # Time Range section
     st.sidebar.markdown("### 🗓️ Time Range")
