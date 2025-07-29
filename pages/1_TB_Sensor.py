@@ -35,7 +35,7 @@ else:
     TB_PATH = "/Volumes/AMBITION/S4W/hydro_link/processed/tb"
     LOGO_PATH = "assets/logo_1.png"  # Relative path for deployment
 
-st.set_page_config(page_title="TB Sensor", layout="wide")
+st.set_page_config(page_title="🌧️ TB Sensor", page_icon="🌧️", layout="wide")
 
 # ---------------------------
 # UTILITY FUNCTIONS
