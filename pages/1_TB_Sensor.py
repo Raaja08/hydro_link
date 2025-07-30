@@ -1,11 +1,9 @@
 # TB Sensor - Converted from Google Drive backup to GitHub storage
-# Retains all original sophisticated features: dual y-axis, bar charts, advanced statistics
-# Missing data handling: continuous time indices, gap visualization, smart aggregation
+# ALL ORIGINAL SOPHISTICATED FEATURES: exact plotting, statistics, missing data handling
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import os
 from datetime import datetime, timedelta
 import base64
@@ -55,90 +53,82 @@ def encode_img_to_base64(image_path):
 def get_summary_stats(df, view_mode, plot_df, agg_type=None):
     """
     Calculate comprehensive summary statistics for the given data.
-    Returns None if there's missing data in the plot data, otherwise returns stats dict.
+    Returns None if there's missing data, otherwise returns stats dict.
     ORIGINAL SOPHISTICATED APPROACH - Only calculate stats when data is complete.
     """
-    # Check if there are any missing values in the plot data (following original guide)
-    if plot_df[plot_df.columns[0]].isna().any():
+    # Check if there are any missing values in the plot data
+    if plot_df['rainfall_mm'].isna().any():
         return None
     
     stats = {}
     
     if view_mode == "Daily":
         # Daily: Total, Maximum (with dynamic label based on aggregation)
-        if 'rainfall_mm' in plot_df.columns:
-            stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-            
-            # Dynamic maximum label based on aggregation type
-            if agg_type == "15-min":
-                stats["Maximum 15-min rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
-            else:
-                stats["Maximum hourly rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+        stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+        
+        # Dynamic maximum label based on aggregation type
+        if agg_type == "15-min":
+            stats["Maximum 15-min rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+        else:
+            stats["Maximum hourly rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
         
     elif view_mode == "Monthly":
         # Monthly: Total, Max daily, Wet-dry days, Dry spell, Average
-        if 'rainfall_mm' in plot_df.columns:
-            stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-            stats["Max daily rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
-            stats["Wet days"] = (plot_df['rainfall_mm'] > 0).sum()
-            stats["Dry days"] = (plot_df['rainfall_mm'] == 0).sum()
-            
-            # Calculate longest dry spell (consecutive days with no rain)
-            rainfall_series = plot_df['rainfall_mm'].fillna(0)
-            max_dry_spell = 0
-            current_dry = 0
-            for val in rainfall_series:
-                if val == 0:
-                    current_dry += 1
-                    max_dry_spell = max(max_dry_spell, current_dry)
-                else:
-                    current_dry = 0
-            stats["Longest dry spell (days)"] = max_dry_spell
-            
-            # Average from non-zero values only
-            non_zero_vals = plot_df['rainfall_mm'][plot_df['rainfall_mm'] > 0]
-            avg_rainfall = non_zero_vals.mean() if len(non_zero_vals) > 0 else 0
-            stats["Average daily rainfall (mm)"] = round(avg_rainfall, 2) if avg_rainfall > 0 else 0
+        stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+        stats["Max daily rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+        stats["Wet days"] = (plot_df['rainfall_mm'] > 0).sum()
+        stats["Dry days"] = (plot_df['rainfall_mm'] == 0).sum()
+        
+        # Calculate longest dry spell (consecutive days with no rain)
+        rainfall_series = plot_df['rainfall_mm'].fillna(0)
+        max_dry_spell = 0
+        current_dry = 0
+        for val in rainfall_series:
+            if val == 0:
+                current_dry += 1
+                max_dry_spell = max(max_dry_spell, current_dry)
+            else:
+                current_dry = 0
+        stats["Longest dry spell (days)"] = max_dry_spell
+        
+        # Average from non-zero values only
+        non_zero_vals = plot_df['rainfall_mm'][plot_df['rainfall_mm'] > 0]
+        avg_rainfall = non_zero_vals.mean() if len(non_zero_vals) > 0 else 0
+        stats["Average daily rainfall (mm)"] = round(avg_rainfall, 2) if avg_rainfall > 0 else 0
         
     elif view_mode == "Yearly":
         # Yearly: Annual total, Wettest month, Dry months, Wet-dry days, Longest dry spell
-        if 'rainfall_mm' in plot_df.columns:
-            stats["Annual total (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+        stats["Annual total (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+        
+        # Wettest month
+        if plot_df['rainfall_mm'].max() > 0:
+            wettest = plot_df['rainfall_mm'].idxmax()
+            stats["Wettest month"] = f"{wettest.strftime('%B')} ({round(plot_df['rainfall_mm'].max(), 2)} mm)"
+        else:
+            stats["Wettest month"] = "N/A"
             
-            # Wettest month
-            if plot_df['rainfall_mm'].max() > 0:
-                wettest = plot_df['rainfall_mm'].idxmax()
-                stats["Wettest month"] = f"{wettest.strftime('%B')} ({round(plot_df['rainfall_mm'].max(), 2)} mm)"
+        stats["Dry months"] = (plot_df['rainfall_mm'] == 0).sum() + plot_df['rainfall_mm'].isna().sum()
+        stats["Wet months"] = (plot_df['rainfall_mm'] > 0).sum()
+        
+        # Longest dry spell in days (convert from monthly data)
+        # For yearly view, we need to estimate days from months
+        rainfall_series = plot_df['rainfall_mm'].fillna(0)
+        max_dry_spell_months = 0
+        current_dry = 0
+        for val in rainfall_series:
+            if val == 0:
+                current_dry += 1
+                max_dry_spell_months = max(max_dry_spell_months, current_dry)
             else:
-                stats["Wettest month"] = "N/A"
-                
-            stats["Dry months"] = (plot_df['rainfall_mm'] == 0).sum() + plot_df['rainfall_mm'].isna().sum()
-            stats["Wet months"] = (plot_df['rainfall_mm'] > 0).sum()
-            
-            # Longest dry spell in days (convert from monthly data)
-            # For yearly view, we need to estimate days from months
-            rainfall_series = plot_df['rainfall_mm'].fillna(0)
-            max_dry_spell_months = 0
-            current_dry = 0
-            for val in rainfall_series:
-                if val == 0:
-                    current_dry += 1
-                    max_dry_spell_months = max(max_dry_spell_months, current_dry)
-                else:
-                    current_dry = 0
-            # Convert months to approximate days (30 days per month)
-            stats["Longest dry spell (days)"] = max_dry_spell_months * 30
+                current_dry = 0
+        # Convert months to approximate days (30 days per month)
+        stats["Longest dry spell (days)"] = max_dry_spell_months * 30
         
     elif view_mode == "Custom":
-        # For custom view, follow original guide - check for any missing data
-        if plot_df[plot_df.columns[0]].isna().any():
-            return None
-            
-        if 'rainfall_mm' in plot_df.columns:
-            stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
-            stats["Max rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
-            stats["Intervals with rainfall"] = (plot_df['rainfall_mm'] > 0).sum()
-            stats["Average rainfall per interval (mm)"] = round(plot_df['rainfall_mm'].mean(), 2)
+        stats["Total rainfall (mm)"] = round(plot_df['rainfall_mm'].sum(), 2)
+        stats["Max rainfall (mm)"] = round(plot_df['rainfall_mm'].max(), 2)
+        stats["Intervals with rainfall"] = (plot_df['rainfall_mm'] > 0).sum()
+        stats["Average rainfall per interval (mm)"] = round(plot_df['rainfall_mm'].mean(), 2)
     
     return stats
 
@@ -203,7 +193,7 @@ if selected_file:
     
     sensor_id = selected_file.replace(".csv", "")
 
-    # ORIGINAL DESIGN: Parameters section (to match OBS and HOBO pattern)
+    # ORIGINAL DESIGN: Parameters section
     st.sidebar.markdown("### 📌 Parameters")
     data_type = st.sidebar.radio("Select data type:", ["Rainfall", "Temperature"])
     
@@ -233,7 +223,6 @@ if selected_file:
         if date_diff <= 7:
             # Create continuous hourly index and reindex with NaN for missing periods
             full_range = pd.date_range(start=pd.Timestamp(start), end=pd.Timestamp(end) + pd.Timedelta(days=1), freq='H', inclusive='left')
-            # Only sum if we have actual non-NaN values
             hourly_data = filtered_df.resample('H').agg({
                 data_column: agg_func
             })
@@ -273,24 +262,19 @@ if selected_file:
             delta = timedelta(days=1)
 
         elif view_mode == "Monthly":
-            # ORIGINAL FEATURE: Show all months that have timestamps (including those with missing rainfall data)
+            # ORIGINAL FEATURE: Show all months that have timestamps
             monthly_groups = df.groupby(pd.Grouper(freq='MS')).size()
             bins = monthly_groups[monthly_groups > 0].index
-            # Format bins for better display
             bin_options = [f"{bin.strftime('%Y %B')}" for bin in bins]
             selected_bin_str = st.sidebar.selectbox("📆 Select month:", bin_options)
-            # Convert back to timestamp
             selected_bin = bins[bin_options.index(selected_bin_str)]
             delta = pd.DateOffset(months=1)
             
         else:  # Yearly - ORIGINAL UNIQUE TB FEATURE
-            # Show all years that have timestamps (show year only)
             yearly_groups = df.groupby(pd.Grouper(freq='YS')).size()
             bins = yearly_groups[yearly_groups > 0].index
-            # Format bins to show year only
             year_options = [bin.strftime('%Y') for bin in bins]
             selected_year_str = st.sidebar.selectbox("📆 Select year:", year_options)
-            # Convert back to timestamp
             selected_bin = bins[year_options.index(selected_year_str)]
             delta = pd.DateOffset(years=1)
 
@@ -303,7 +287,6 @@ if selected_file:
             freq = "15min" if agg == "15-min" else "H"
             
             full_range = pd.date_range(start=selected_bin, end=selected_bin + pd.Timedelta(days=1), freq=freq, inclusive='left')
-            # Aggregate and reindex to show missing periods as NaN
             hourly_data = filtered_df.resample(freq).agg({
                 data_column: agg_func
             })
@@ -317,7 +300,6 @@ if selected_file:
             # ORIGINAL FEATURE: Create continuous daily index for the selected month
             month_end = selected_bin + pd.offsets.MonthEnd(1)
             full_range = pd.date_range(start=selected_bin, end=month_end, freq='D')
-            # Aggregate and reindex to show missing periods as NaN
             daily_data = filtered_df.resample('D').agg({
                 data_column: agg_func
             })
@@ -328,7 +310,6 @@ if selected_file:
             # ORIGINAL FEATURE: Create continuous monthly index for the selected year
             year_end = selected_bin.replace(month=12, day=31)
             full_range = pd.date_range(start=selected_bin, end=year_end, freq='MS')
-            # Aggregate and reindex to show missing periods as NaN
             monthly_data = filtered_df.resample('MS').agg({
                 data_column: agg_func
             })
@@ -337,7 +318,7 @@ if selected_file:
             time_title = f"{data_type} {unit} (Yearly: {selected_bin.strftime('%Y')})"
 
     # ---------------------------
-    # PLOTS (ORIGINAL SOPHISTICATED VISUALIZATION)
+    # PLOTS (ORIGINAL SOPHISTICATED VISUALIZATION FROM GOOGLE DRIVE)
     # ---------------------------
     st.markdown(f"<h4 style='font-weight: 600;'>📈 Sensor: {sensor_id}</h4>", unsafe_allow_html=True)
 
@@ -354,105 +335,165 @@ if selected_file:
 
         # ORIGINAL FEATURE: For rainfall, create cumulative; for temperature, don't
         if data_type == "Rainfall":
-            # Calculate cumulative rainfall for dual y-axis
+            # Calculate cumulative rainfall - cumsum() naturally handles NaN values
             plot_df['cumulative_rainfall'] = plot_df[data_column].cumsum()
             show_cumulative = True
         else:
             show_cumulative = False
         
-        # ORIGINAL FEATURE: Create the appropriate plot type
+        # ORIGINAL SOPHISTICATED PLOTTING: Create the appropriate plot type
         if data_type == "Rainfall":
-            # ORIGINAL DESIGN: Bar chart for rainfall - gaps will show as missing bars
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Bar chart for rainfall
-            fig.add_trace(
-                go.Bar(x=plot_df.index, y=plot_df[data_column], name="Rainfall", marker_color="blue"),
-                secondary_y=False,
+            # ORIGINAL: Bar chart for rainfall - gaps will show as missing bars
+            fig = px.bar(
+                plot_df, y=data_column,
+                title=time_title,
+                labels={data_column: f"{data_type} ({'mm' if data_type == 'Rainfall' else '°C'})", "index": "Time"},
+                template="plotly_white",
+                color_discrete_sequence=["#1f77b4"]  # Original specific blue color
             )
-            
-            # Cumulative line on secondary y-axis
-            if show_cumulative:
-                fig.add_trace(
-                    go.Scatter(x=plot_df.index, y=plot_df['cumulative_rainfall'], 
-                              mode='lines', name='Cumulative', line=dict(color='red')),
-                    secondary_y=True,
-                )
         else:
-            # ORIGINAL DESIGN: Line chart for temperature
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=plot_df.index, y=plot_df[data_column], 
-                                   mode='lines+markers', name='Temperature', 
-                                   line=dict(color='orange')))
+            # ORIGINAL: Line chart for temperature - gaps will show as disconnected lines
+            fig = px.line(
+                plot_df, y=data_column,
+                title=time_title,
+                labels={data_column: f"{data_type} ({'mm' if data_type == 'Rainfall' else '°C'})", "index": "Time"},
+                template="plotly_white",
+                color_discrete_sequence=["#1f77b4"]  # Same blue as rainfall
+            )
+            # Add markers to the line and ensure gaps are not connected
+            fig.update_traces(mode='lines+markers', connectgaps=False)
         
-        # Calculate y-axis max (higher than highest value)
+        # ORIGINAL: Calculate y-axis max (higher than highest value)
         max_data = plot_df[data_column].max()
         
         if pd.isna(max_data):
-            y_max = 10
-            st.warning("⚠️ No valid data found for the selected period.")
+            max_data = 1
             
-        # ORIGINAL FEATURE: For temperature, calculate proper y-axis range
+        # ORIGINAL: For temperature, calculate proper y-axis range
         if data_type == "Temperature":
-            min_temp = plot_df[data_column].min()
-            max_temp = plot_df[data_column].max()
-            if not (pd.isna(min_temp) or pd.isna(max_temp)):
-                temp_range = max_temp - min_temp
-                y_min = min_temp - (temp_range * 0.1)
-                y_max = max_temp + (temp_range * 0.1)
+            min_data = plot_df[data_column].min()
+            if not pd.isna(min_data):
+                # If all temperatures are positive, start from 0
+                if min_data >= 0:
+                    y_min = 0
+                    y_max = max_data * 1.2  # 20% padding above max
+                else:
+                    # If there are negative temperatures, add padding below min
+                    y_min = min_data * 1.2  # 20% padding below min (makes it more negative)
+                    y_max = max_data * 1.2  # 20% padding above max
             else:
-                y_min, y_max = 0, 40
+                y_min = 0
+                y_max = 1
         else:
-            y_max = max_data * 1.2 if not pd.isna(max_data) else 10
+            # For rainfall, keep existing logic
+            if max_data == 0:
+                max_data = 1
+            y_min = 0
+            y_max = max_data * 1.2  # 20% padding above max value
         
-        # ORIGINAL FEATURE: Update layout - dual y-axis for rainfall, single for temperature
+        # ORIGINAL: Add cumulative rainfall line only for rainfall data
         if show_cumulative:
-            fig.update_layout(
-                title=time_title,
-                xaxis_title="Time",
-                height=500,
-                template="plotly_white"
+            max_cumulative = plot_df['cumulative_rainfall'].max()
+            if pd.isna(max_cumulative) or max_cumulative == 0:
+                max_cumulative = 1
+            y2_max = max_cumulative * 1.2
+            
+            fig.add_scatter(
+                x=plot_df.index, 
+                y=plot_df['cumulative_rainfall'], 
+                mode="lines+markers",
+                name="Cumulative Rainfall", 
+                line=dict(color="#00509E"),  # Original dark blue color
+                yaxis="y2",
+                connectgaps=False  # This ensures gaps are visible in the cumulative line
             )
-            fig.update_yaxes(title_text="Rainfall (mm)", secondary_y=False, range=[0, y_max])
-            fig.update_yaxes(title_text="Cumulative Rainfall (mm)", secondary_y=True)
-        else:
-            fig.update_layout(
-                title=time_title,
-                xaxis_title="Time",
-                yaxis_title=f"{data_type} ({'mm' if data_type == 'Rainfall' else '°C'})",
-                height=500,
-                template="plotly_white"
-            )
-            if data_type == "Temperature":
-                fig.update_yaxes(range=[y_min, y_max])
         
-        # ORIGINAL FEATURE: Special x-axis formatting for different view modes
+        # ORIGINAL: Update layout - dual y-axis for rainfall, single for temperature
+        if show_cumulative:
+            # ORIGINAL: Dual y-axis layout for rainfall
+            fig.update_layout(
+                yaxis=dict(
+                    title=f"{data_type} ({'mm' if data_type == 'Rainfall' else '°C'})",
+                    side="left",
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor='lightgray',
+                    range=[y_min, y_max]
+                ),
+                yaxis2=dict(
+                    title="Cumulative Rainfall (mm)",
+                    side="right",
+                    overlaying="y",
+                    showgrid=False,
+                    range=[0, y2_max]
+                ),
+                xaxis_title="Date" if view_mode in ["Monthly", "Yearly"] else "Time",
+                height=400,
+                hovermode='x unified',
+                legend=dict(
+                    x=1.08,  # Move legend further right to avoid secondary y-axis
+                    y=0.5,   # Center vertically
+                    xanchor='left',
+                    yanchor='middle'
+                )
+            )
+        else:
+            # ORIGINAL: Single y-axis layout for temperature
+            fig.update_layout(
+                yaxis=dict(
+                    title=f"{data_type} ({'mm' if data_type == 'Rainfall' else '°C'})",
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor='lightgray',
+                    range=[y_min, y_max]
+                ),
+                xaxis_title="Date" if view_mode in ["Monthly", "Yearly"] else "Time",
+                height=400,
+                hovermode='x unified'
+            )
+        
+        # ORIGINAL: Special x-axis formatting for different view modes
         if view_mode == "Monthly":
-            fig.update_xaxes(tickformat="%d", title_text="Day of Month")
+            # Show all dates from first to last day of month
+            fig.update_xaxes(
+                dtick="D1",  # Show every day
+                tickformat="%d",  # Show day numbers
+                tickmode="linear",
+                range=[plot_df.index.min(), plot_df.index.max()]  # Limit to actual month range
+            )
         elif view_mode == "Yearly":
-            fig.update_xaxes(tickformat="%b", title_text="Month")
+            # Show all months
+            fig.update_xaxes(
+                dtick="M1",  # Show every month
+                tickformat="%b",  # Show month abbreviations
+                tickmode="linear",
+                range=[plot_df.index.min(), plot_df.index.max()]  # Limit to actual year range
+            )
 
         st.plotly_chart(fig, use_container_width=True)
 
         # ---------------------------
-        # ORIGINAL FEATURE: SUMMARY STATS (Only for Rainfall)
+        # ORIGINAL: SUMMARY STATS (Only for Rainfall) - DATAFRAME FORMAT
         # ---------------------------
         if data_type == "Rainfall":
-            # ORIGINAL SOPHISTICATED STATISTICS
-            agg_type = agg if view_mode == "Daily" else None
-            stats = get_summary_stats(df, view_mode, plot_df, agg_type)
+            # Pass aggregation type for daily view
+            agg_type = None
+            if view_mode == "Daily" and 'agg' in locals():
+                agg_type = agg
+            stats = get_summary_stats(filtered_df, view_mode, plot_df, agg_type)
             
-            if stats:
-                st.markdown("### 📊 Summary Statistics")
-                cols = st.columns(len(stats))
-                for i, (key, value) in enumerate(stats.items()):
-                    with cols[i % len(cols)]:
-                        st.metric(key, value)
+            if stats is None:
+                # Show warning for incomplete data
+                st.warning("⚠️ Data is incomplete for this period. Summary statistics are not available.")
             else:
-                st.info("📊 **Statistics unavailable** - Some data points are missing in the selected period.")
+                st.markdown("### 📊 Summary Statistics")
+                # ORIGINAL: Create DataFrame with explicit string dtype to avoid Arrow issues
+                stats_df = pd.DataFrame(stats, index=["Value"]).T
+                stats_df = stats_df.astype(str)  # Ensure all values are strings
+                st.dataframe(stats_df, use_container_width=True)
 
         # ---------------------------
-        # ORIGINAL FEATURE: DOWNLOAD OPTIONS
+        # ORIGINAL: DOWNLOAD OPTIONS
         # ---------------------------
         st.markdown("### 📥 Download Plot")
         
@@ -462,7 +503,7 @@ if selected_file:
         try:
             html_string = fig.to_html(include_plotlyjs='cdn')
             st.download_button(
-                f"📄 Download {data_type} Plot as HTML",
+                "📄 Download Interactive HTML Plot", 
                 html_string.encode(), 
                 file_name=html_filename, 
                 mime="text/html",
@@ -474,4 +515,4 @@ if selected_file:
         st.info("💡 **Note**: Download individual plots as interactive HTML files.")
 
 st.markdown("---")
-st.caption("Built with ❤️ using Streamlit • GitHub Version - Retains all original Google Drive features")
+st.caption("Built with ❤️ using Streamlit • GitHub Version - Exact Google Drive backup features")
