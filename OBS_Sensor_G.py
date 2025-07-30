@@ -1,6 +1,6 @@
 # OBS Sensor - Simplified GitHub Version
 # Updated: 2025-07-29 - Fast, reliable file-based storage
-# Version: 3.0 - No Google Drive, no crashes, 10x faster
+# Version: 3.1 - Clean deployment, no backup pages
 import streamlit as st
 import pandas as pd
 import plotly.express as px

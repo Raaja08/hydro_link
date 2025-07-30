@@ -153,7 +153,7 @@ if selected_file:
                 "Choose date:", 
                 value=start_of_bins.date(),
                 min_value=start_of_bins.date(),
-                max_date=max_date.date()
+                max_value=max_date.date()
             )
             selected_bin = pd.Timestamp(selected_date)
             delta = timedelta(days=1)
