@@ -225,6 +225,9 @@ if selected_file:
         data_column = 'temperature_c'
         agg_func = lambda x: x.mean() if (len(x) > 0 and x.notna().any()) else None
 
+    # Initialize aggregation option
+    agg_option = None
+
     if view_mode == "Custom":
         start = st.sidebar.date_input("Start Date", min_value=min_date.date(), value=min_date.date())
         end = st.sidebar.date_input("End Date", min_value=min_date.date(), value=max_date.date())
@@ -269,7 +272,7 @@ if selected_file:
                 "Choose date:", 
                 value=min_date.date(),
                 min_value=min_date.date(),
-                max_date=max_date.date()
+                max_value=max_date.date()
             )
             selected_bin = pd.Timestamp(selected_date)
             delta = timedelta(days=1)
@@ -383,7 +386,7 @@ if selected_file:
         # SUMMARY STATS (UNIQUE TB FEATURE - Only for Rainfall)
         # ---------------------------
         if data_type == "Rainfall":
-            stats = get_summary_stats(df, view_mode, plot_df, agg_option if view_mode == "Yearly" else None)
+            stats = get_summary_stats(df, view_mode, plot_df, agg_option)
             
             if stats:
                 st.markdown("### 📊 Summary Statistics")
