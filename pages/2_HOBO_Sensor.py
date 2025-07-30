@@ -1,6 +1,5 @@
 # HOBO Sensor - GitHub Version (Converted from Google Drive backup)
 # Unique Design: Checkbox selection for multiple parameters
-# Parameters: Pressure, Water Temperature, Water Level with individual plots
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -126,18 +125,11 @@ if selected_file:
         sensor_row = metadata_df[metadata_df['sensor_id'].str.contains(sensor_id)]
         sensor_height = sensor_row['sensor_height_m'].values[0] if not sensor_row.empty else 0.0
 
-    # Parameter display mapping with specific colors
+    # Parameter display mapping
     param_display = {
         'pressure_psi': 'Pressure (psi)',
         'water_level_m': 'Water Level (m)',
         'water_temp_c': 'Water Temperature (°C)'
-    }
-    
-    # Parameter colors for individual plots
-    param_colors = {
-        'pressure_psi': 'blue',
-        'water_level_m': 'teal', 
-        'water_temp_c': 'red'
     }
 
     # Calculate water level from pressure if not available
@@ -198,7 +190,6 @@ if selected_file:
     if not selected_params:
         st.warning("Please select at least one parameter.")
     else:
-        # UNIQUE HOBO DESIGN: Individual color-coded plots for each parameter
         for param in selected_params:
             fig = px.line(
                 filtered_df,
@@ -207,17 +198,10 @@ if selected_file:
                 labels={"value": param_display[param]},
                 template="plotly_white"
             )
-            
-            # Apply parameter-specific colors
-            fig.update_traces(line_color=param_colors[param], line_width=2)
-            fig.update_layout(
-                xaxis_title="Time", 
-                yaxis_title=param_display[param], 
-                height=400
-            )
+            fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-            # HTML Download for each parameter
+            # HTML Download only
             html_filename = f"{sensor_id}_{view_mode}_{param}.html"
             try:
                 html_string = fig.to_html(include_plotlyjs='cdn')
