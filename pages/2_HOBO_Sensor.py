@@ -118,6 +118,19 @@ if selected_file:
     # Extract sensor information
     sensor_id = selected_file.split(".")[0]  # e.g., hobo_s1_2023
     
+    # Get sensor height from metadata for water level calculation
+    sensor_height = 0.0
+    if not metadata_df.empty:
+        metadata_df['sensor_id'] = metadata_df['sensor_id'].astype(str)
+        sensor_row = metadata_df[metadata_df['sensor_id'].str.contains(sensor_id)]
+        sensor_height = sensor_row['sensor_height_m'].values[0] if not sensor_row.empty else 0.0
+
+    # Calculate water level from pressure if not available (ORIGINAL HOBO FEATURE)
+    if 'water_level_m' not in df.columns and 'pressure_psi' in df.columns:
+        # Convert pressure from psi to water level in meters
+        # Formula: pressure_psi * 6.89476 (convert to kPa) / 98.0665 (convert to m) + sensor height
+        df['water_level_m'] = ((df['pressure_psi'] * 6.89476) / 98.0665) + sensor_height
+    
     # ---------------------------
     # SIDEBAR CONTROLS - UNIQUE HOBO DESIGN
     # ---------------------------
@@ -153,8 +166,8 @@ if selected_file:
     st.sidebar.markdown("### 📌 Parameters")
     selected_params = []
     
-    # Default to first parameter if pressure_psi or water_level_m exists
-    default_param = 'pressure_psi' if 'pressure_psi' in available_params else available_params[0]
+    # Default to water_level_m if available, otherwise pressure_psi, otherwise first parameter
+    default_param = 'water_level_m' if 'water_level_m' in available_params else ('pressure_psi' if 'pressure_psi' in available_params else available_params[0])
     
     for param in available_params:
         if st.sidebar.checkbox(param_display[param], param == default_param):
