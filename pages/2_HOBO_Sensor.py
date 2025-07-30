@@ -239,16 +239,8 @@ if selected_file:
             )
             xaxis_title = "Date" if view_mode == "Monthly" else "Time"
             
-            # Set y-axis range: start from 0 for water level if no negative values
-            yaxis_config = {"title": param_display[param]}
-            if param == 'water_level_m' and param in filtered_df.columns:
-                min_val = filtered_df[param].min()
-                if pd.notna(min_val) and min_val >= 0:
-                    max_val = filtered_df[param].max()
-                    if pd.notna(max_val):
-                        yaxis_config["range"] = [0, max_val * 1.1]  # 10% padding above max
-            
-            fig.update_layout(xaxis_title=xaxis_title, yaxis=yaxis_config, height=400)
+            # Let plotly handle y-axis range automatically for best visualization
+            fig.update_layout(xaxis_title=xaxis_title, yaxis_title=param_display[param], height=400)
             st.plotly_chart(fig, use_container_width=True)
 
             # HTML Download functionality
