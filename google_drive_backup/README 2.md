@@ -68,18 +68,23 @@ The current GitHub-based implementation uses:
    - `google_drive_utils.py` - Main Google Drive API utilities
    - `OBS_Sensor_G_backup.py` - Original OBS sensor with Google Drive integration
 
-2. **Debug and Development Files:**
+2. **Sensor Page Backups:**
+   - `1_TB_Sensor_backup.py` - Original Google Drive TB sensor dashboard
+   - `2_HOBO_Sensor_backup.py` - Original Google Drive HOBO sensor dashboard
+
+3. **Debug and Development Files:**
    - `debug_app.py` - Debug application using Google Drive
    - `debug_minimal.py` - Minimal debug script
 
-3. **Documentation:**
+4. **Documentation:**
    - `GOOGLE_DRIVE_SETUP.md` - Setup instructions
    - `GOOGLE_DRIVE_TROUBLESHOOTING.md` - Troubleshooting guide  
    - `GOOGLE_DRIVE_VERSIONS_GUIDE.md` - Version management guide
 
-4. **System Files:**
+5. **System Files:**
    - All macOS metadata files (`._*`)
    - Python cache files (`__pycache__/*google_drive*`)
+   - Removed nested backup folder from `pages/google_drive_backup/` to prevent Streamlit conflicts
 
 ### Current Active Files (Unaffected):
 - `OBS_Sensor_G.py` - GitHub-based OBS sensor (main app)
