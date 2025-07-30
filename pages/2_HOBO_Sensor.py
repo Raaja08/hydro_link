@@ -238,44 +238,22 @@ if selected_file:
             fig.update_layout(xaxis_title=xaxis_title, yaxis=yaxis_config, height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-            # Download options
-            col1, col2 = st.columns(2)
-            
             # HTML Download functionality
             html_filename = f"{sensor_id}_{view_mode}_{param}.html"
             try:
                 html_string = fig.to_html(include_plotlyjs='cdn')
-                with col1:
-                    st.download_button(
-                        f"📄 Download {param_display[param]} as HTML",
-                        html_string.encode(), 
-                        file_name=html_filename, 
-                        mime="text/html",
-                        key=f"html_{param}",
-                        help="Download interactive HTML plot file."
-                    )
+                st.download_button(
+                    f"📄 Download {param_display[param]} as HTML",
+                    html_string.encode(), 
+                    file_name=html_filename, 
+                    mime="text/html",
+                    key=f"html_{param}",
+                    help="Download interactive HTML plot file."
+                )
             except Exception as e:
-                with col1:
-                    st.error(f"HTML download failed: {str(e)}")
-            
-            # PNG Download
-            png_filename = f"{sensor_id}_{view_mode}_{param}.png"
-            try:
-                png_bytes = fig.to_image(format="png", width=1200, height=600)
-                with col2:
-                    st.download_button(
-                        f"🖼️ Download {param_display[param]} as PNG",
-                        png_bytes,
-                        file_name=png_filename,
-                        mime="image/png",
-                        key=f"png_{param}",
-                        help="Download static PNG image file."
-                    )
-            except Exception as e:
-                with col2:
-                    st.error(f"PNG download failed: {str(e)}")
+                st.error(f"HTML download failed: {str(e)}")
 
-        st.info("💡 **Note**: Download individual plots as HTML (interactive) or PNG (static) files.")
+        st.info("💡 **Note**: Download individual plots as interactive HTML files.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit • GitHub Version - Fast & Reliable")
