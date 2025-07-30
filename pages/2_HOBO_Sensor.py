@@ -1,5 +1,3 @@
-# HOBO Sensor - GitHub Version (Converted from Google Drive backup)
-# Unique Design: Checkbox selection for multiple parameters
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -12,7 +10,7 @@ import base64
 # ---------------------------
 st.set_page_config(page_title="🌡️ HOBO Sensor", page_icon="🌡️", layout="wide")
 
-# Data paths - GitHub storage
+# Data paths - pointing to your uploaded processed folder
 HOBO_BASE_PATH = "processed/hobo"
 SENSOR_METADATA_PATH = "processed/sensor_metadata/sensor_metadata.csv"
 LOGO_PATH = "assets/logo_1.png"
@@ -49,7 +47,7 @@ def encode_img_to_base64(image_path):
         return ""
 
 # ---------------------------
-# LOGO HEADER
+# HEADER SECTION
 # ---------------------------
 logo_base64 = encode_img_to_base64(LOGO_PATH)
 
@@ -57,7 +55,7 @@ if logo_base64:
     st.markdown(f"""
         <div style='display: flex; justify-content: space-between; align-items: center; padding: 20px 10px 10px 10px;'>
             <div>
-                <h1 style='margin-bottom: 0;'>🌊 S4W Sensor Dashboard</h1>
+                <h1 style='margin-bottom: 0;'>🌡️ S4W Sensor Dashboard - HOBO Sensor</h1>
                 <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
             </div>
             <div>
@@ -68,16 +66,17 @@ if logo_base64:
 else:
     st.markdown("""
         <div style='padding: 20px 10px 10px 10px;'>
-            <h1 style='margin-bottom: 0;'>🌊 S4W Sensor Dashboard</h1>
+            <h1 style='margin-bottom: 0;'>🌡️ S4W Sensor Dashboard - HOBO Sensor</h1>
             <p style='margin-top: 5px; color: gray;font-size: 18px; font-weight: 500;'>From small sensors to big insights — monitor what matters ❤️</p>
         </div>
     """, unsafe_allow_html=True)
 
 # ---------------------------
-# FILE SELECTION (GitHub format)
+# SITE & FILE SELECTION
 # ---------------------------
+
 try:
-    # Get available sites
+    # Get available sites from local processed folder
     sites = [d for d in os.listdir(HOBO_BASE_PATH) if os.path.isdir(os.path.join(HOBO_BASE_PATH, d)) and not d.startswith('.')]
     
     if not sites:
@@ -102,52 +101,71 @@ except Exception as e:
     st.stop()
 
 # ---------------------------
-# MAIN CONTENT
+# DATA LOADING & PROCESSING
 # ---------------------------
+
 if selected_file:
-    # Load data
     file_path = os.path.join(HOBO_BASE_PATH, selected_site, selected_file)
     df = load_csv(file_path)
     
-    if df is None:
-        st.error("Failed to load sensor data")
+    if df is None or df.empty:
+        st.error("Failed to load data or data is empty")
         st.stop()
     
-    # Load metadata
+    # Load metadata if available
     metadata_df = load_metadata_csv(SENSOR_METADATA_PATH)
     
-    sensor_id = selected_file.replace(".csv", "")
+    # Extract sensor information
+    sensor_id = selected_file.split(".")[0]  # e.g., hobo_s1_2023
     
-    # Get sensor height from metadata
-    sensor_height = 0.0
-    if not metadata_df.empty:
-        metadata_df['sensor_id'] = metadata_df['sensor_id'].astype(str)
-        sensor_row = metadata_df[metadata_df['sensor_id'].str.contains(sensor_id)]
-        sensor_height = sensor_row['sensor_height_m'].values[0] if not sensor_row.empty else 0.0
-
-    # Parameter display mapping
-    param_display = {
-        'pressure_psi': 'Pressure (psi)',
-        'water_level_m': 'Water Level (m)',
-        'water_temp_c': 'Water Temperature (°C)'
-    }
-
-    # Calculate water level from pressure if not available
-    if 'water_level_m' not in df.columns and 'pressure_psi' in df.columns:
-        df['water_level_m'] = ((df['pressure_psi'] * 6.89476) / 98.0665) + sensor_height
-
-    # UNIQUE HOBO DESIGN: Checkbox selection for multiple parameters
+    # ---------------------------
+    # SIDEBAR CONTROLS - UNIQUE HOBO DESIGN
+    # ---------------------------
+    
+    # Define available parameters based on actual data columns
+    available_params = []
+    param_display = {}
+    
+    # Check for common HOBO sensor parameters
+    if 'pressure_psi' in df.columns:
+        available_params.append('pressure_psi')
+        param_display['pressure_psi'] = 'Pressure (psi)'
+    
+    if 'water_temp_c' in df.columns:
+        available_params.append('water_temp_c')
+        param_display['water_temp_c'] = 'Water Temperature (°C)'
+        
+    if 'water_level_m' in df.columns:
+        available_params.append('water_level_m')
+        param_display['water_level_m'] = 'Water Level (m)'
+        
+    # Add any other numeric columns as potential parameters
+    for col in df.columns:
+        if col not in available_params and df[col].dtype in ['float64', 'int64']:
+            available_params.append(col)
+            param_display[col] = col.replace('_', ' ').title()
+    
+    if not available_params:
+        st.error("No numeric parameters found in the data")
+        st.stop()
+    
+    # Parameter selection with checkboxes (HOBO's unique feature)
     st.sidebar.markdown("### 📌 Parameters")
-    available_params = [p for p in param_display if p in df.columns]
-    selected_params = [p for p in available_params if st.sidebar.checkbox(param_display[p], p == 'water_level_m')]
-
-    # UNIQUE HOBO DESIGN: Time Range options (Daily, Weekly, Monthly, Custom)
+    selected_params = []
+    
+    # Default to first parameter if pressure_psi or water_level_m exists
+    default_param = 'pressure_psi' if 'pressure_psi' in available_params else available_params[0]
+    
+    for param in available_params:
+        if st.sidebar.checkbox(param_display[param], param == default_param):
+            selected_params.append(param)
+    
     st.sidebar.markdown("### 🗓️ Time Range")
     view_mode = st.sidebar.radio("View by:", ["Daily", "Weekly", "Monthly", "Custom"])
-
+    
     min_date = df.index.min()
     max_date = df.index.max()
-
+    
     if view_mode == "Custom":
         start = st.sidebar.date_input("Start Date", min_value=min_date.date(), value=min_date.date())
         end = st.sidebar.date_input("End Date", min_value=min_date.date(), value=max_date.date())
@@ -156,7 +174,7 @@ if selected_file:
         time_title = f"{start.strftime('%b %d, %Y')} to {end.strftime('%b %d, %Y')}"
     else:
         if view_mode == "Daily":
-            # Calendar view for daily selection (like TB Sensor)
+            # Calendar view for daily selection
             st.sidebar.markdown("📅 Select Date:")
             selected_date = st.sidebar.date_input(
                 "Choose date:", 
@@ -171,8 +189,12 @@ if selected_file:
             selected_bin = st.sidebar.selectbox("📆 Select week:", bins)
             delta = timedelta(weeks=1)
         else:  # Monthly
-            bins = df.resample('MS').mean().index
-            selected_bin = st.sidebar.selectbox("📆 Select month:", bins)
+            # Show all months that have timestamps (TB Sensor format)
+            monthly_groups = df.groupby(pd.Grouper(freq='MS')).size()
+            bins = monthly_groups[monthly_groups > 0].index
+            bin_options = [f"{bin.strftime('%Y %B')}" for bin in bins]
+            selected_bin_str = st.sidebar.selectbox("📆 Select month:", bin_options)
+            selected_bin = bins[bin_options.index(selected_bin_str)]
             delta = pd.DateOffset(months=1)
 
         selected_end = selected_bin + delta
@@ -185,8 +207,12 @@ if selected_file:
         else:
             time_title = selected_bin.strftime("%B %d, %Y")
     
+    # ---------------------------
+    # PLOTTING & VISUALIZATION
+    # ---------------------------
+    
     st.markdown(f"<h4 style='font-weight: 600;'>📈 Sensor: {sensor_id}</h4>", unsafe_allow_html=True)
-
+    
     if not selected_params:
         st.warning("Please select at least one parameter.")
     else:
@@ -198,25 +224,58 @@ if selected_file:
                 labels={"value": param_display[param]},
                 template="plotly_white"
             )
-            fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
+            xaxis_title = "Date" if view_mode == "Monthly" else "Time"
+            
+            # Set y-axis range: start from 0 for water level if no negative values
+            yaxis_config = {"title": param_display[param]}
+            if param == 'water_level_m' and param in filtered_df.columns:
+                min_val = filtered_df[param].min()
+                if pd.notna(min_val) and min_val >= 0:
+                    max_val = filtered_df[param].max()
+                    if pd.notna(max_val):
+                        yaxis_config["range"] = [0, max_val * 1.1]  # 10% padding above max
+            
+            fig.update_layout(xaxis_title=xaxis_title, yaxis=yaxis_config, height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-            # HTML Download only
+            # Download options
+            col1, col2 = st.columns(2)
+            
+            # HTML Download functionality
             html_filename = f"{sensor_id}_{view_mode}_{param}.html"
             try:
                 html_string = fig.to_html(include_plotlyjs='cdn')
-                st.download_button(
-                    f"📄 Download {param_display[param]} as HTML",
-                    html_string.encode(), 
-                    file_name=html_filename, 
-                    mime="text/html",
-                    key=f"html_{param}",
-                    help="Download interactive HTML plot file."
-                )
+                with col1:
+                    st.download_button(
+                        f"📄 Download {param_display[param]} as HTML",
+                        html_string.encode(), 
+                        file_name=html_filename, 
+                        mime="text/html",
+                        key=f"html_{param}",
+                        help="Download interactive HTML plot file."
+                    )
             except Exception as e:
-                st.error(f"Download failed: {str(e)}")
+                with col1:
+                    st.error(f"HTML download failed: {str(e)}")
+            
+            # PNG Download
+            png_filename = f"{sensor_id}_{view_mode}_{param}.png"
+            try:
+                png_bytes = fig.to_image(format="png", width=1200, height=600)
+                with col2:
+                    st.download_button(
+                        f"🖼️ Download {param_display[param]} as PNG",
+                        png_bytes,
+                        file_name=png_filename,
+                        mime="image/png",
+                        key=f"png_{param}",
+                        help="Download static PNG image file."
+                    )
+            except Exception as e:
+                with col2:
+                    st.error(f"PNG download failed: {str(e)}")
 
-        st.info("💡 **Note**: Download individual plots as interactive HTML files.")
+        st.info("💡 **Note**: Download individual plots as HTML (interactive) or PNG (static) files.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit • GitHub Version - Fast & Reliable")

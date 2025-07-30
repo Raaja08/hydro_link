@@ -195,7 +195,7 @@ if selected_file:
 
     # ORIGINAL DESIGN: Parameters section
     st.sidebar.markdown("### 📌 Parameters")
-    data_type = st.sidebar.radio("Select data type:", ["Rainfall", "Temperature"])
+    data_type = st.sidebar.radio("", ["Rainfall", "Temperature"])
     
     # ORIGINAL DESIGN: Time Range section
     st.sidebar.markdown("### 🗓️ Time Range")
@@ -497,22 +497,43 @@ if selected_file:
         # ---------------------------
         st.markdown("### 📥 Download Plot")
         
-        # HTML Download only
+        col1, col2 = st.columns(2)
+        
+        # HTML Download
         html_filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.html"
         
         try:
             html_string = fig.to_html(include_plotlyjs='cdn')
-            st.download_button(
-                "📄 Download Interactive HTML Plot", 
-                html_string.encode(), 
-                file_name=html_filename, 
-                mime="text/html",
-                help="Download interactive HTML plot file."
-            )
+            with col1:
+                st.download_button(
+                    "📄 Download Interactive HTML Plot", 
+                    html_string.encode(), 
+                    file_name=html_filename, 
+                    mime="text/html",
+                    help="Download interactive HTML plot file."
+                )
         except Exception as e:
-            st.error(f"Download failed: {str(e)}")
+            with col1:
+                st.error(f"HTML download failed: {str(e)}")
+        
+        # PNG Download
+        png_filename = f"{sensor_id}_{view_mode}_{time_title.replace(' ', '_').replace(',', '').replace(':', '_').replace('(', '').replace(')', '')}.png"
+        
+        try:
+            png_bytes = fig.to_image(format="png", width=1200, height=600)
+            with col2:
+                st.download_button(
+                    "🖼️ Download Static PNG Plot", 
+                    png_bytes,
+                    file_name=png_filename,
+                    mime="image/png",
+                    help="Download static PNG image file."
+                )
+        except Exception as e:
+            with col2:
+                st.error(f"PNG download failed: {str(e)}")
 
-        st.info("💡 **Note**: Download individual plots as interactive HTML files.")
+        st.info("💡 **Note**: Download individual plots as HTML (interactive) or PNG (static) files.")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit • GitHub Version - Exact Google Drive backup features")

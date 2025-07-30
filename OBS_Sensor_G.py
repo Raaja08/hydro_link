@@ -119,7 +119,7 @@ try:
         st.error("🔍 No sensor sites found in the processed/obs folder.")
         st.stop()
         
-    selected_site = st.sidebar.selectbox("🌍 Select Site", sites)
+    selected_site = st.sidebar.selectbox("🌍 Select OBS Site", sites)
     
     # Get CSV files in selected site
     site_path = os.path.join(OBS_BASE_PATH, selected_site)
@@ -129,7 +129,7 @@ try:
         st.error(f"📁 No CSV files found in {selected_site}")
         st.stop()
         
-    selected_file = st.sidebar.selectbox("📂 Select a sensor data file", csv_files)
+    selected_file = st.sidebar.selectbox("📂 Select data file", csv_files)
     
 except Exception as e:
     st.error(f"Error accessing data files: {e}")
@@ -229,11 +229,15 @@ if selected_file:
             selected_bin = st.sidebar.selectbox("📆 Select week:", bins)
             delta = timedelta(weeks=1)
         else:  # Monthly
-            bins = df[start_of_bins:].resample('MS').mean().index
+            # Show all months that have timestamps (TB Sensor format)
+            monthly_groups = df[start_of_bins:].groupby(pd.Grouper(freq='MS')).size()
+            bins = monthly_groups[monthly_groups > 0].index
             if len(bins) == 0:
                 st.warning("No data available after filtering. Please adjust your selection.")
                 st.stop()
-            selected_bin = st.sidebar.selectbox("📆 Select month:", bins)
+            bin_options = [f"{bin.strftime('%Y %B')}" for bin in bins]
+            selected_bin_str = st.sidebar.selectbox("📆 Select month:", bin_options)
+            selected_bin = bins[bin_options.index(selected_bin_str)]
             delta = pd.DateOffset(months=1)
 
         selected_end = selected_bin + delta
@@ -267,23 +271,56 @@ if selected_file:
                 labels={"value": param_display[param]},
                 template="plotly_white"
             )
-            fig.update_layout(xaxis_title="Time", yaxis_title=param_display[param], height=400)
+            xaxis_title = "Date" if view_mode == "Monthly" else "Time"
+            
+            # Set y-axis range: start from 0 for water level if no negative values
+            yaxis_config = {"title": param_display[param]}
+            if param == 'water_level' and param in filtered_df.columns:
+                min_val = filtered_df[param].min()
+                if pd.notna(min_val) and min_val >= 0:
+                    max_val = filtered_df[param].max()
+                    if pd.notna(max_val):
+                        yaxis_config["range"] = [0, max_val * 1.1]  # 10% padding above max
+            
+            fig.update_layout(xaxis_title=xaxis_title, yaxis=yaxis_config, height=400)
             st.plotly_chart(fig, use_container_width=True)
 
+            # Download options
+            col1, col2 = st.columns(2)
+            
             # HTML Download
             html_filename = f"{sensor_name}_{view_mode}_{param}.html"
             try:
                 html_string = fig.to_html(include_plotlyjs='cdn')
-                st.download_button(
-                    f"📄 Download {param_display[param]} as HTML",
-                    html_string.encode(), 
-                    file_name=html_filename, 
-                    mime="text/html",
-                    key=param,
-                    help="Download interactive HTML plot file."
-                )
+                with col1:
+                    st.download_button(
+                        f"📄 Download {param_display[param]} as HTML",
+                        html_string.encode(), 
+                        file_name=html_filename, 
+                        mime="text/html",
+                        key=f"html_{param}",
+                        help="Download interactive HTML plot file."
+                    )
             except Exception as e:
-                st.error(f"Download failed: {str(e)}")
+                with col1:
+                    st.error(f"HTML download failed: {str(e)}")
+            
+            # PNG Download
+            png_filename = f"{sensor_name}_{view_mode}_{param}.png"
+            try:
+                png_bytes = fig.to_image(format="png", width=1200, height=600)
+                with col2:
+                    st.download_button(
+                        f"🖼️ Download {param_display[param]} as PNG",
+                        png_bytes,
+                        file_name=png_filename,
+                        mime="image/png",
+                        key=f"png_{param}",
+                        help="Download static PNG image file."
+                    )
+            except Exception as e:
+                with col2:
+                    st.error(f"PNG download failed: {str(e)}")
 
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit • GitHub Version - Fast & Reliable")
